@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: atac-networks
+Version: 0.1.0
+Home-page: None
+Author: Remi-Trimbour
+Author-email: remi.trimbour@pasteur.fr
+Maintainer: Remi-Trimbour
+Maintainer-email: remi.trimbour@gmail.com
+Requires-Python: >=3.8,<4.0
+
+None
