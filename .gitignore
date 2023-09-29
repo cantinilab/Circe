@@ -3,3 +3,4 @@ dist/
 poetry.lock
 __pycache__/
 atac_networks/pyquic.cpython-310-x86_64-linux-gnu.so
+.ipynb_checkpoints/
