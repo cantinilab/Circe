@@ -84,62 +84,6 @@ def sort_regions(AnnData):
     return AnnData
 
 
-def get_distance_regions(AnnData, chromosomes=None):
-    """
-    Get distance between regions.
-    """
-    # Check if chromosomes is None
-    if chromosomes is None:
-        # Get chromosome list
-        chromosomes = AnnData.var["chromosome"].unique().tolist()
-    else:
-        if not np.array(
-            [i in AnnData.var["chromosome"].unique() for i in chromosomes]
-        ).all():
-            raise ValueError(
-                """
-                             Chromosomes should be in
-                             AnnData.var['chromosome'].
-                             Check if chromosomes is correct.
-                             """
-            )
-
-    # A dictionary to store distance between regions for each chromosome
-    distances = {}
-
-    # Get distance between regions for each chromosome
-    for chromosome in chromosomes:
-        chr_mask = AnnData.var["chromosome"] == chromosome
-        # Store start and end positions in two arrays
-        m, n = np.meshgrid(
-            AnnData.var["start"].values[chr_mask],
-            AnnData.var["end"].values[chr_mask]
-        )
-
-        # Get distance between start of region m and end of region n
-        distance = np.abs(m - n)
-
-        # Remove diagonal (distance between a region and itself)
-        distance = distance - np.diag(distance) * np.eye(distance.shape[0])
-
-        # Keep upper triangle of the distance matrix
-        # (we don't want to calculate the same connection twice)
-        distance = np.triu(distance, k=1)
-
-        # Test if distance is negative
-        if np.any(distance < 0):
-            raise ValueError(
-                """Distance between regions should be positive.
-                            You might have overlapping regions."""
-            )
-
-        # Store distance in a dictionary
-        distances[chromosome] = distance
-
-    # Return distance
-    return distances
-
-
 def calc_penalty(alpha, distance, unit_distance=1000):
     with np.errstate(divide="ignore"):
         penalties = alpha * (1 - (unit_distance / distance) ** 0.75)
@@ -293,8 +237,8 @@ def average_alpha(
     alpha_list = []
     for window in tqdm.tqdm(random_windows):
         distances = get_distances_regions(
-            AnnData[:, window], unit_distance=unit_distance
-        )
+            AnnData[:, window]
+            )
 
         alpha = local_alpha(
             X=AnnData[:, window].X,
