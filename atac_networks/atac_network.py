@@ -369,6 +369,7 @@ def sliding_graphical_lasso(
 
                 window_penalties = calc_penalty(
                     alpha,
+                    distance=distance,
                     unit_distance=unit_distance)
 
                 # Initiating graphical lasso
