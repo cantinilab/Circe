@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 setup.py
 atac_networks/__init__.py
@@ -6,7 +7,6 @@ atac_networks/inverse_covariance.py
 atac_networks/metrics.py
 atac_networks/pyquic.cpython-310-x86_64-linux-gnu.so
 atac_networks/quic_graph_lasso.py
-atac_networks/random.py
 atac_networks/rank_correlation.py
 atac_networks.egg-info/PKG-INFO
 atac_networks.egg-info/SOURCES.txt

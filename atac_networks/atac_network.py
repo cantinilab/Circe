@@ -3,6 +3,7 @@ import pandas as pd
 import tqdm
 import scipy as sp
 from . import quic_graph_lasso
+from functools import reduce
 
 
 def add_region_infos(AnnData, sep=("_", "_"), inplace=True):
@@ -230,9 +231,8 @@ def average_alpha(
     if len(idx_list) < n_samples_maxtry:
         random_windows = idx_list
     else:
-        random_windows = np.random.choice(
-            idx_list, size=n_samples_maxtry, replace=False
-        )
+        idx_list_indices = np.random.choice(len(idx_list), n_samples_maxtry, replace=True)
+        random_windows = [idx_list[i] for i in idx_list_indices]
 
     alpha_list = []
     for window in tqdm.tqdm(random_windows):
@@ -244,6 +244,7 @@ def average_alpha(
             X=AnnData[:, window].X,
             distances=distances,
             maxit=max_alpha_iteration,
+            unit_distance=unit_distance,
             s=s,
             distance_constraint=distance_constraint,
             distance_parameter_convergence=distance_parameter_convergence,
