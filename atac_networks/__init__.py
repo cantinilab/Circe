@@ -1,1 +1,1 @@
-from atac_network import *
+from .atac_network import *
