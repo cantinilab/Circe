@@ -16,6 +16,12 @@ This package can be run on multiple cores.
 
 ## Installation
 The package can be installed using pip:
+
+```
+pip install -e "git+https://github.com/r-trimbour/atac-networks.git#egg=atac-networks"
+```
+
+ or by installing it from a local clone
 ```
 git clone https://github.com/r-trimbour/atac-networks.git
 pip install -e "atac-networks"
