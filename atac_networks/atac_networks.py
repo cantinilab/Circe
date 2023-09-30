@@ -123,16 +123,16 @@ def local_alpha(
     if (distances > distance_constraint).sum() <= 1:
         return "No long edges"
 
-    starting_max = 3
-    distance_parameter = 3
-    distance_parameter_max = 3
+    starting_max = 2
+    distance_parameter = 2
+    distance_parameter_max = 2
     distance_parameter_min = 0
 
     for i in range(maxit):
         # Get covariance matrix
         cov = np.cov(X, rowvar=False)
         # Add small value to diagonal to enforce convergence is lasso ?
-        cov = cov - (np.diag(cov) - 1e-4) * np.eye(len(cov))
+        cov = cov - (- 1e-4) * np.eye(len(cov))
         # Get penalties
         penalties = calc_penalty(
             distance_parameter, distances, unit_distance=unit_distance
