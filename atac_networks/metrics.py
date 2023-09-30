@@ -1,3 +1,6 @@
+# Code from https://github.com/skggm/skggm
+
+
 """Metrics for cross validation with Gaussian graphical models."""
 import numpy as np
 from sklearn.utils.extmath import fast_logdet
