@@ -1,3 +1,5 @@
+# Code from https://github.com/skggm/skggm
+
 """Nonparametric rank correlation estimators as alternative to
  linear correlation estimators."""
 from __future__ import absolute_import
