@@ -1,3 +1,7 @@
+# Code from https://github.com/skggm/skggm
+# Added a precomputed option for the covariance matrix in _init_coefs
+
+
 from __future__ import absolute_import
 
 import numpy as np
