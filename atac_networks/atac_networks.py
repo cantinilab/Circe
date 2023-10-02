@@ -274,7 +274,6 @@ def average_alpha(
             )
         )
 
-    print(alpha_list)
     alpha = np.mean(alpha_list)
     return alpha
 
@@ -297,6 +296,8 @@ def sliding_graphical_lasso(
     WARNING: might look generalised for many overlaps but is not yet at the
     end, that's why 'start_sliding' is hard coded as list of 2 values.
     """
+
+    print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
         AnnData,
         window_size=window_size,
@@ -311,13 +312,13 @@ def sliding_graphical_lasso(
     )
 
     start_slidings = [0, int(window_size / 2)]
-    print(start_slidings)
 
     results = {}
     regions_list = AnnData.var_names
     # Get global indices of regions
     map_indices = {regions_list[i]: i for i in range(len(regions_list))}
 
+    print("Calculating co-accessibility scores...")
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
@@ -325,7 +326,10 @@ def sliding_graphical_lasso(
         slide_results["idy"] = np.array([])
 
         for chromosome in AnnData.var["chromosome"].unique():
-            print(chromosome)
+            if k == 0:
+                print(chromosome, "1/2")
+            else:
+                print(chromosome, "2/2")
             # Get start positions of windows
             window_starts = [
                 i
@@ -353,7 +357,6 @@ def sliding_graphical_lasso(
                 # Get submatrix
                 window_accessibility = AnnData.X[:, idx]
                 window_scores = np.cov(window_accessibility, rowvar=False)
-                print(window_scores)
                 window_scores = window_scores + 1e-4 * np.eye(
                     len(window_scores))
 
@@ -410,12 +413,6 @@ def sliding_graphical_lasso(
                     [slide_results["idy"], idy]
                     )
 
-            print(
-                window_penalties,
-                slide_results["scores"].sum(),
-                corrected_scores.data.sum(),
-            )
-
             # Create sparse matrix
             results["window_" + str(k)] = sp.sparse.coo_matrix(
                 (slide_results["scores"],
@@ -423,12 +420,12 @@ def sliding_graphical_lasso(
                 shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
             )
 
+    print("Averaging co-accessibility scores across windows...")
     sliding_keys = ["window_" + str(k) for k in start_slidings]
 
     k_positive_coords = []
     k_negative_coords = []
     for k in sliding_keys:
-        print(results[k].row)
         k_positive_coords.append(
             {
                 (x, y)
@@ -483,7 +480,6 @@ def sliding_graphical_lasso(
     # Get all shared coordinates
     l_all_coords = []
     for k in sliding_keys:
-        print(k, sp.sparse.csr_matrix(results[k])[1, 1])
         l_all_coords.append(
             {(x, y) for x, y, d in zip(
                 results[k].row,
