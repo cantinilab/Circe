@@ -216,7 +216,7 @@ def average_alpha(
                     window_size,
                 )
             ]
-            for start in tqdm.tqdm(window_starts):
+            for start in window_starts:
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
