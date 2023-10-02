@@ -28,3 +28,5 @@ pip install -e "atac-networks"
 ```
 
 ## Usage
+It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
+
