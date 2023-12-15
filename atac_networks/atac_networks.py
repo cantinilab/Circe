@@ -551,7 +551,7 @@ def tfidf(X):
 
 def lsi(
         adata: AnnData, n_components: int = 20,
-        use_highly_variable: Optional[bool] = None, **kwargs
+        use_highly_variable: bool = None, **kwargs
 ) -> None:
     r"""
     LSI analysis (following the Seurat v3 approach)
