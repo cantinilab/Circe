@@ -1,5 +1,6 @@
 # Ignore __pycache__ directories
 global-exclude __pycache__
+__pycache__
 
 # Ignore .ipnyb_checkpoints directories
 .ipynb_checkpoints
@@ -16,6 +17,3 @@ dist
 
 # Ignore poetry.lock file
 poetry.lock
-
-# ignore benchmarking
-benchmarking
