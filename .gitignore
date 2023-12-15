@@ -16,3 +16,6 @@ dist
 
 # Ignore poetry.lock file
 poetry.lock
+
+# ignore benchmarking
+benchmarking
