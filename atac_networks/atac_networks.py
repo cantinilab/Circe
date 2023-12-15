@@ -527,7 +527,7 @@ def sliding_graphical_lasso(
 
 
 
-def tfidf(X: np.Array) -> np.Array:
+def tfidf(X):
     r"""
     TF-IDF normalization (following the Seurat v3 approach)
 
