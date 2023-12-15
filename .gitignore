@@ -3,7 +3,7 @@ global-exclude __pycache__
 
 # Ignore .ipnyb_checkpoints directories
 .ipynb_checkpoints
-src
+
 
 # Ignore jupyter notebook
 Example1-Copy1.ipynb
