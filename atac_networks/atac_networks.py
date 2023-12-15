@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
+from anndata import AnnData
 import tqdm
 import scipy as sp
 import sklearn
+from sklearn.preprocessing import normalize
 from . import quic_graph_lasso
 from functools import reduce
 
@@ -525,7 +527,7 @@ def sliding_graphical_lasso(
 
 
 
-def tfidf(X: Array) -> Array:
+def tfidf(X: np.Array) -> np.Array:
     r"""
     TF-IDF normalization (following the Seurat v3 approach)
 
