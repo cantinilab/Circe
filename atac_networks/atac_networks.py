@@ -1,10 +1,7 @@
 import numpy as np
 import pandas as pd
-from anndata import AnnData
 import tqdm
 import scipy as sp
-import sklearn
-from sklearn.preprocessing import normalize
 from . import quic_graph_lasso
 from functools import reduce
 
@@ -89,6 +86,9 @@ def sort_regions(AnnData):
 
 
 def calc_penalty(alpha, distance, unit_distance=1000):
+    """
+    todo
+    """
     with np.errstate(divide="ignore"):
         penalties = alpha * (1 - (unit_distance / distance) ** 0.75)
     penalties[~np.isfinite(penalties)] = 0
@@ -96,6 +96,9 @@ def calc_penalty(alpha, distance, unit_distance=1000):
 
 
 def get_distances_regions(AnnData):
+    """
+    todo
+    """
     # Store start and end positions in two arrays
     m, n = np.meshgrid(AnnData.var["start"].values, AnnData.var["end"].values)
     # Get distance between start of region m and end of region n
@@ -115,6 +118,9 @@ def local_alpha(
     max_elements=200,
     unit_distance=1000,
 ):
+    """
+    todo
+    """
     # Check if there is more elements than max_elements
     if X.shape[1] > max_elements:
         raise ValueError(
@@ -200,6 +206,9 @@ def average_alpha(
     distance_parameter_convergence=1e-22,
     max_elements=200,
 ):
+    """
+    todo
+    """
     start_slidings = [0, int(window_size / 2)]
 
     idx_list = []
@@ -521,64 +530,3 @@ def sliding_graphical_lasso(
     # if more than 1 overlap with the windows
 
     return sp.sparse.coo_matrix(average)
-
-
-# LSI from scGLUE : https://github.com/gao-lab/GLUE/blob/master/scglue
-
-
-
-def tfidf(X):
-    r"""
-    TF-IDF normalization (following the Seurat v3 approach)
-
-    Parameters
-    ----------
-    X
-        Input matrix
-
-    Returns
-    -------
-    X_tfidf
-        TF-IDF normalized matrix
-    """
-    idf = X.shape[0] / X.sum(axis=0)
-    if sp.sparse.issparse(X):
-        tf = X.multiply(1 / X.sum(axis=1))
-        return tf.multiply(idf)
-    else:
-        tf = X / X.sum(axis=1, keepdims=True)
-        return tf * idf
-
-def lsi(
-        adata: AnnData, n_components: int = 20,
-        use_highly_variable: bool = None, **kwargs
-) -> None:
-    r"""
-    LSI analysis (following the Seurat v3 approach)
-
-    Parameters
-    ----------
-    adata
-        Input dataset
-    n_components
-        Number of dimensions to use
-    use_highly_variable
-        Whether to use highly variable features only, stored in
-        ``adata.var['highly_variable']``. By default uses them if they
-        have been determined beforehand.
-    **kwargs
-        Additional keyword arguments are passed to
-        :func:`sklearn.utils.extmath.randomized_svd`
-    """
-    if "random_state" not in kwargs:
-        kwargs["random_state"] = 0  # Keep deterministic as the default behavior
-    if use_highly_variable is None:
-        use_highly_variable = "highly_variable" in adata.var
-    adata_use = adata[:, adata.var["highly_variable"]] if use_highly_variable else adata
-    X = tfidf(adata_use.X)
-    X_norm = normalize(X, norm="l1")
-    X_norm = np.log1p(X_norm * 1e4)
-    X_lsi = sklearn.utils.extmath.randomized_svd(X_norm, n_components, **kwargs)[0]
-    X_lsi -= X_lsi.mean(axis=1, keepdims=True)
-    X_lsi /= X_lsi.std(axis=1, ddof=1, keepdims=True)
-    adata.obsm["X_lsi"] = X_lsi
