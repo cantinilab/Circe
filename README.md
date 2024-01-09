@@ -15,7 +15,7 @@ _Add stats on runtime, memory usage.
 This package can be run on multiple cores.
 
 ## Installation
-The package can be installed using pip (in editable mode -e):
+The package can be installed using pip **(in editable mode -e)**:
 
 ```
 pip install -e "git+https://github.com/r-trimbour/atac-networks.git#egg=atac-networks"
