@@ -312,6 +312,169 @@ def sliding_graphical_lasso(
     """
 
     print("Calculating penalty coefficient alpha...")
+    alpha = an.average_alpha(
+        AnnData,
+        window_size=window_size,
+        unit_distance=unit_distance,
+        n_samples=n_samples,
+        n_samples_maxtry=n_samples_maxtry,
+        max_alpha_iteration=max_alpha_iteration,
+        s=s,
+        distance_constraint=distance_constraint,
+        distance_parameter_convergence=distance_parameter_convergence,
+        max_elements=max_elements,
+    )
+
+    start_slidings = [0, int(window_size / 2)]
+
+    results = {}
+    regions_list = AnnData.var_names
+    # Get global indices of regions
+    map_indices = {regions_list[i]: i for i in range(len(regions_list))}
+
+    print("Calculating co-accessibility scores...")
+    for k in start_slidings:
+        slide_results = {}
+        slide_results["scores"] = np.array([])
+        slide_results["idx"] = np.array([])
+        slide_results["idy"] = np.array([])
+
+        for chromosome in AnnData.var["chromosome"].unique():
+            if k == 0:
+                print("Starting to processe chromosome : {}, 1/2".format(chromsome))
+            else:
+                print(chromosome, "2/2")
+            # Get start positions of windows
+            window_starts = [
+                i
+                for i in range(
+                    k,
+                    AnnData.var["end"][
+                        AnnData.var["chromosome"] == chromosome].max(),
+                    window_size,
+                )
+            ]
+
+            for start in window_starts:
+                end = start + window_size
+                # Get global indices of regions in the window
+                idx = np.where(
+                    (AnnData.var["chromosome"] == chromosome)
+                    & (AnnData.var["start"] >= start)
+                    & (AnnData.var["start"] <= end)
+                )[0]
+
+                # already global ?
+                # Get global indices of regions in the window
+                # idx = [map_indices[i] for i in regions_list[idx]]
+
+                # Get submatrix
+                window_accessibility = AnnData.X[:, idx].copy()
+                window_scores = np.cov(window_accessibility, rowvar=False)
+                window_scores = window_scores + 1e-4 * np.eye(
+                    len(window_scores))
+
+                distance = get_distances_regions(AnnData[:, idx])
+                # Test if distance is negative
+                if np.any(distance < 0):
+                    raise ValueError(
+                        """
+                                     Distance between regions should be
+                                     positive. You might have overlapping
+                                     regions.
+                                     """
+                    )
+
+                window_penalties = an.calc_penalty(
+                    alpha,
+                    distance=distance,
+                    unit_distance=unit_distance)
+
+                # Initiating graphical lasso
+                graph_lasso_model = an.quic_graph_lasso.QuicGraphicalLasso(
+                    init_method="precomputed", lam=window_penalties
+                )
+
+                # Fit graphical lasso
+                graph_lasso_model.fit(window_scores)
+
+                # Names of regions in the window
+                window_region_names = AnnData.var_names[idx].copy()
+                # convert to sparse matrix the results
+                corrected_scores = sp.sparse.coo_matrix(
+                    graph_lasso_model.covariance_)
+
+                # Convert corrected_scores column
+                # and row indices to global indices
+                idx = [
+                    map_indices[name]
+                    for name in window_region_names[corrected_scores.row]
+                ]
+                idy = [
+                    map_indices[name]
+                    for name in window_region_names[corrected_scores.col]
+                ]
+
+                # Add the "sub" resuls to the global sparse matrix
+                slide_results["scores"] = np.concatenate(
+                    [slide_results["scores"], corrected_scores.data]
+                )
+                slide_results["idx"] = np.concatenate(
+                    [slide_results["idx"], idx]
+                    )
+                slide_results["idy"] = np.concatenate(
+                    [slide_results["idy"], idy]
+                    )
+
+            # Create sparse matrix
+            results["window_" + str(k)] = sp.sparse.coo_matrix(
+                (slide_results["scores"],
+                 (slide_results["idx"], slide_results["idy"])),
+                shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
+            )
+            
+
+    sliding_keys = ["window_" + str(k) for k in start_slidings]
+    
+    return reconcile(results)
+
+def reconcile(
+    results_gl
+):
+
+    results_keys = list(results_gl.keys())
+    print("Averaging co-accessibility scores across windows...")
+
+    # Sum of values per non-null locations
+    average = reduce(lambda x, y: x+y, [results_gl[k] for k in results_keys])
+    # Number of non-null values per locations
+    divider = reduce(lambda x, y: x+y,
+                     [results_gl[k].astype(bool).astype(int) for k in results_keys])
+    # divide sum by umber of non-null values, only for actual non-null values
+    average.data = average.data/divider.data
+
+    return sp.sparse.coo_matrix(average)
+
+def deprecated_sliding_graphical_lasso(
+    AnnData,
+    window_size: int = 500_000,
+    unit_distance=1_000,
+    distance_constraint=250_000,
+    s=0.75,
+    max_alpha_iteration=100,
+    distance_parameter_convergence=1e-22,
+    max_elements=200,
+    n_samples=100,
+    n_samples_maxtry=500,
+):
+    """
+    Extract sliding submatrix from a sparse correlation matrix.
+
+    WARNING: might look generalised for many overlaps but is not yet at the
+    end, that's why 'start_sliding' is hard coded as list of 2 values.
+    """
+
+    print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
         AnnData,
         window_size=window_size,
