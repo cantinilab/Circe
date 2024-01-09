@@ -162,7 +162,6 @@ def local_alpha(
             results[mask_distance] != 0).sum() / len(results[mask_distance])
         print(results[mask_distance].shape)
         print(len(results[mask_distance]))
-        print(far_edges)
 
         near_edges = (results != 0).sum() / (results.shape[0] ** 2)
         # If far_edges is too high (not sparse enough after filtering),
