@@ -92,6 +92,7 @@ def calc_penalty(alpha, distance, unit_distance=1000):
     with np.errstate(divide="ignore"):
         penalties = alpha * (1 - (unit_distance / distance) ** 0.75)
     penalties[~np.isfinite(penalties)] = 0
+    penalties[penalties < 0] = 0
     return penalties
 
 
