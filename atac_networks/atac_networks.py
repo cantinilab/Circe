@@ -101,7 +101,7 @@ def get_distances_regions(AnnData):
     todo
     """
     # Store start and end positions in two arrays
-    m, n = np.meshgrid(AnnData.var["start"].values, AnnData.var["end"].values)
+    m, n = np.meshgrid(AnnData.var["start"].values, AnnData.var["start"].values)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -176,6 +176,7 @@ def local_alpha(
         # If new_distance_parameter is equal to starting_max,
         # double starting_max
         if new_distance_parameter == starting_max:
+            print('start with a higher starting_max')
             new_distance_parameter = 2 * starting_max
             starting_max = new_distance_parameter
             distance_parameter_max = starting_max
@@ -184,6 +185,7 @@ def local_alpha(
             abs(distance_parameter - new_distance_parameter)
             < distance_parameter_convergence
         ):
+            print('convergence reached')
             break
         else:
             distance_parameter = new_distance_parameter
@@ -191,7 +193,6 @@ def local_alpha(
         # Print warning if maxit is reached
         if i == maxit - 1:
             print("maximum number of iterations hit")
-
     return distance_parameter
 
 
@@ -262,6 +263,7 @@ def average_alpha(
             distance_parameter_convergence=distance_parameter_convergence,
             max_elements=max_elements,
         )
+        print(alpha)
         if isinstance(alpha, int) or isinstance(alpha, float):
             alpha_list.append(alpha)
         else:
