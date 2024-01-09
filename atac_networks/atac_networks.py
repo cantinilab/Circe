@@ -160,14 +160,14 @@ def local_alpha(
         mask_distance = distances > distance_constraint
         far_edges = (
             results[mask_distance] != 0).sum() / len(results[mask_distance])
-        print(results[mask_distance])
+        print(results[mask_distance].shape)
         print(len(results[mask_distance]))
         print(far_edges)
 
         near_edges = (results != 0).sum() / (results.shape[0] ** 2)
         # If far_edges is too high (not sparse enough after filtering),
         #  increase distance_parameter
-        if far_edges > 0.05 or near_edges > 0.8 or distance_parameter == 0:
+        if (far_edges < 0.05 and near_edges > 0.2) or distance_parameter == 0:
             distance_parameter_min = distance_parameter
         # If far_edges is too low (too sparse because of filtering),
         #  decrease distance_parameter
