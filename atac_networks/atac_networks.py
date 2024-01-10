@@ -1,7 +1,3 @@
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
-
 import numpy as np
 import pandas as pd
 import tqdm
@@ -156,6 +152,8 @@ def local_alpha(
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
             init_method="precomputed",
             lam=penalties,
+            tol=1e-4,
+            max_iter=1e4,
             auto_scale=False,
             )
 
@@ -399,6 +397,8 @@ def sliding_graphical_lasso(
                 graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
                     init_method="precomputed",
                     lam=window_penalties,
+                    tol=1e-4,
+                    max_iter=1e4,
                     auto_scale=False,
                 )
 
