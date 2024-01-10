@@ -31,7 +31,7 @@ def _init_coefs(X, method="corrcoef"):
         if issparse(init_cov):
             return init_cov, np.max(np.abs(init_cov.data))
         else:
-            return init_cov, np.max(np.abs(np.triu(init_cov))) 
+            return init_cov, np.max(np.abs(np.triu(init_cov)))
     else:
         raise ValueError(
             (
