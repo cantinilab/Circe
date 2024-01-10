@@ -241,10 +241,13 @@ def average_alpha(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome)
-                    & (AnnData.var["start"] >= start)
-                    & (AnnData.var["start"] <= end)
-                )[0]
+                    (AnnData.var["chromosome"] == chromosome
+                     &
+                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
+                      or
+                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
+                      )))[0]
+
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
 
@@ -366,10 +369,12 @@ def sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome)
-                    & (AnnData.var["start"] >= start)
-                    & (AnnData.var["start"] <= end)
-                )[0]
+                    (AnnData.var["chromosome"] == chromosome
+                     &
+                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
+                      or
+                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
+                      )))[0]
 
                 # already global ?
                 # Get global indices of regions in the window
@@ -532,10 +537,12 @@ def deprecated_sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome)
-                    & (AnnData.var["start"] >= start)
-                    & (AnnData.var["start"] <= end)
-                )[0]
+                    (AnnData.var["chromosome"] == chromosome
+                     &
+                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
+                      or
+                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
+                      )))[0]
 
                 # already global ?
                 # Get global indices of regions in the window
