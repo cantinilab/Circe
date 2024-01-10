@@ -312,7 +312,7 @@ def sliding_graphical_lasso(
     """
 
     print("Calculating penalty coefficient alpha...")
-    alpha = an.average_alpha(
+    alpha = average_alpha(
         AnnData,
         window_size=window_size,
         unit_distance=unit_distance,
@@ -385,13 +385,13 @@ def sliding_graphical_lasso(
                                      """
                     )
 
-                window_penalties = an.calc_penalty(
+                window_penalties = calc_penalty(
                     alpha,
                     distance=distance,
                     unit_distance=unit_distance)
 
                 # Initiating graphical lasso
-                graph_lasso_model = an.quic_graph_lasso.QuicGraphicalLasso(
+                graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
                     init_method="precomputed", lam=window_penalties
                 )
 
@@ -432,11 +432,9 @@ def sliding_graphical_lasso(
                  (slide_results["idx"], slide_results["idy"])),
                 shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
             )
-            
 
-    sliding_keys = ["window_" + str(k) for k in start_slidings]
-    
     return reconcile(results)
+
 
 def reconcile(
     results_gl
