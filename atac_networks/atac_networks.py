@@ -150,8 +150,12 @@ def local_alpha(
 
         # Initiating graphical lasso
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-            init_method="precomputed", lam=penalties
-        )
+            init_method="precomputed",
+            lam=penalties,
+            tol=1e-4,
+            max_iter=10000,
+            auto_scale=False,
+            )
 
         # Fit graphical lasso
         results = graph_lasso_model.fit(cov).covariance_
