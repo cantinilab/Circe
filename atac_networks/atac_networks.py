@@ -152,8 +152,6 @@ def local_alpha(
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
             init_method="precomputed",
             lam=penalties,
-            tol=1e-4,
-            max_iter=10000,
             auto_scale=False,
             )
 
@@ -397,8 +395,6 @@ def sliding_graphical_lasso(
                 graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
                     init_method="precomputed",
                     lam=window_penalties,
-                    tol=1e-4,
-                    max_iter=10000,
                     auto_scale=False,
                 )
 
