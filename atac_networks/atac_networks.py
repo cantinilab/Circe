@@ -185,7 +185,6 @@ def local_alpha(
             abs(distance_parameter - new_distance_parameter)
             < distance_parameter_convergence
         ):
-            # print('convergence reached')
             break
         else:
             distance_parameter = new_distance_parameter
@@ -263,7 +262,7 @@ def average_alpha(
             distance_parameter_convergence=distance_parameter_convergence,
             max_elements=max_elements,
         )
-        print(alpha)
+
         if isinstance(alpha, int) or isinstance(alpha, float):
             alpha_list.append(alpha)
         else:
