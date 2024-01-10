@@ -395,6 +395,7 @@ def sliding_graphical_lasso(
                     lam=window_penalties,
                     tol=1e-4,
                     max_iter=10000,
+                    auto_scale=False,
                 )
 
                 # Fit graphical lasso
