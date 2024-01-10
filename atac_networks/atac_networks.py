@@ -391,7 +391,10 @@ def sliding_graphical_lasso(
 
                 # Initiating graphical lasso
                 graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-                    init_method="precomputed", lam=window_penalties
+                    init_method="precomputed",
+                    lam=window_penalties,
+                    tol=1e-4,
+                    max_iter=10000,
                 )
 
                 # Fit graphical lasso
