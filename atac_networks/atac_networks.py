@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
+warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
+
 import numpy as np
 import pandas as pd
 import tqdm
@@ -492,7 +496,7 @@ def deprecated_sliding_graphical_lasso(
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
     )
-    alpha = 0.30
+    alpha = 0.23
 
     start_slidings = [0, int(window_size / 2)]
 
