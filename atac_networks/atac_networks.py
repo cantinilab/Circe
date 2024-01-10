@@ -185,7 +185,7 @@ def local_alpha(
             abs(distance_parameter - new_distance_parameter)
             < distance_parameter_convergence
         ):
-            print('convergence reached')
+            # print('convergence reached')
             break
         else:
             distance_parameter = new_distance_parameter
@@ -341,7 +341,7 @@ def sliding_graphical_lasso(
 
         for chromosome in AnnData.var["chromosome"].unique():
             if k == 0:
-                print("Starting to processe chromosome : {}, 1/2".format(chromsome))
+                print("Starting to processe chromosome : {}, 1/2".format(chromosome))
             else:
                 print(chromosome, "2/2")
             # Get start positions of windows
