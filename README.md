@@ -9,7 +9,7 @@ It is based on the pipeline and hypotheses presented in the manuscript "Cicero P
 Results may vary between both packages, notably due to the different implementations of graphical lasso.
 
 ## Comparison to Cicero R package
-_Add figures to show similitude on small datasets._
+<img src="Figures/correlation_toy_dataset1.jpg" align="center" width="1000"/>
 _Add stats on similarity on large datasets._
 _Add stats on runtime, memory usage.
 This package can be run on multiple cores.
