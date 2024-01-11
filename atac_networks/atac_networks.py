@@ -1,7 +1,3 @@
-generate_windows
-get_genomic_range
-calc_dist
-
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
 warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
