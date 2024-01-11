@@ -152,13 +152,14 @@ def local_alpha(
             distance_parameter, distances, unit_distance=unit_distance
         )
 
+
         # Initiating graphical lasso
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
             init_method="precomputed",
             lam=penalties,
             tol=1e-4,
             max_iter=1e4,
-            auto_scale=False,
+            auto_scale=True,
             )
 
         # Fit graphical lasso
@@ -402,7 +403,7 @@ def sliding_graphical_lasso(
                     lam=window_penalties,
                     tol=1e-4,
                     max_iter=1e4,
-                    auto_scale=False,
+                    auto_scale=True,
                 )
 
                 # Fit graphical lasso
