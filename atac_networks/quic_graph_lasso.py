@@ -65,7 +65,7 @@ def quic(
     if isinstance(lam, float):
         _lam = np.empty((Sn, Sm))
         _lam[:] = lam
-        _lam[np.diag_indices(Sn)] = 0.  # make sure diagonal is zero
+        #_lam[np.diag_indices(Sn)] = 0.  # make sure diagonal is zero
     else:
         assert lam.shape == S.shape, "lam, S shape mismatch."
         _lam = as_float_array(lam, copy=False, force_all_finite=False)
