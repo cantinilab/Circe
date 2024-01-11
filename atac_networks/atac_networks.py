@@ -371,7 +371,8 @@ def local_alpha(
 
         # Print warning if maxit is reached
         if i == maxit - 1:
-            print("maximum number of iterations hit")
+            # print("maximum number of iterations hit")
+            pass
     return distance_parameter
 
 
