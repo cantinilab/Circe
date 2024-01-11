@@ -1,3 +1,7 @@
+generate_windows
+get_genomic_range
+calc_dist
+
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
 warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
@@ -162,7 +166,7 @@ def local_alpha(
             )
 
         # Fit graphical lasso
-        results = graph_lasso_model.fit(cov).covariance_
+        results = graph_lasso_model.fit(cov).precision_
 
         # Get proportion of far away/all region pairs that have a connection
         mask_distance = distances > distance_constraint
@@ -241,12 +245,9 @@ def average_alpha(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome
-                     &
-                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
-                      or
-                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
-                      )))[0]
+                    ((AnnData.var["chromosome"] == chromosome)
+                    & (AnnData.var["start"] >= start)
+                    & (AnnData.var["start"] <= end)))[0]
 
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
@@ -369,12 +370,9 @@ def sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome
-                     &
-                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
-                      or
-                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
-                      )))[0]
+                    ((AnnData.var["chromosome"] == chromosome)
+                    & (AnnData.var["start"] >= start)
+                    & (AnnData.var["start"] <= end)))[0]
 
                 # already global ?
                 # Get global indices of regions in the window
@@ -418,7 +416,7 @@ def sliding_graphical_lasso(
                 window_region_names = AnnData.var_names[idx].copy()
                 # convert to sparse matrix the results
                 corrected_scores = sp.sparse.coo_matrix(
-                    graph_lasso_model.covariance_)
+                    graph_lasso_model.precision_)
 
                 # Convert corrected_scores column
                 # and row indices to global indices
@@ -582,7 +580,7 @@ def deprecated_sliding_graphical_lasso(
                 window_region_names = AnnData.var_names[idx].copy()
                 # convert to sparse matrix the results
                 corrected_scores = sp.sparse.coo_matrix(
-                    graph_lasso_model.covariance_)
+                    graph_lasso_model.precision_)
 
                 # Convert corrected_scores column
                 # and row indices to global indices
