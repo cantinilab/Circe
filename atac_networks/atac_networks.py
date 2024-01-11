@@ -552,14 +552,13 @@ def sliding_graphical_lasso(
         slide_results["scores"] = np.array([])
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
-
-        for chromosome in AnnData.var["chromosome"].unique():
-            if k == 0:
-                print("Starting to process chromosome : {}".format(
-                    chromosome))
-            else:
-                print("Finishing to process chromosome : {}".format(
-                    chromosome))
+        if k == 0:
+            print("Starting to process chromosomes : {}".format(
+                AnnData.var["chromosome"].unique()))
+        else:
+            print("Finishing to process chromosomes : {}".format(
+                AnnData.var["chromosome"].unique()))
+        for chromosome in tqdm.tqdm(AnnData.var["chromosome"].unique()):
             # Get start positions of windows
             window_starts = [
                 i
