@@ -412,7 +412,7 @@ def sliding_graphical_lasso(
                 window_region_names = AnnData.var_names[idx].copy()
                 # convert to sparse matrix the results
                 corrected_scores = sp.sparse.coo_matrix(
-                    graph_lasso_model.precision_)
+                    graph_lasso_model.covariance_)
 
                 # Convert corrected_scores column
                 # and row indices to global indices
