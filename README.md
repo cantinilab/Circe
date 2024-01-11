@@ -23,6 +23,16 @@ git clone https://github.com/r-trimbour/atac-networks.git
 pip install -e "atac-networks"
 ```
 
+## Minimal example
+```
+import anndata as ad
+import atac_networks as an
+
+atac = ad.read_h5ad('atac_data.h5ad')
+an.add_region_infos(atac)
+an.compute_atac_network(atac)
+an.extract_atac_links(atac)
+```
 
 ## Comparison to Cicero R package
 ### Toy dataset 1: 
