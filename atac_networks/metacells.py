@@ -26,27 +26,31 @@ def compute_metacells(
 
     Parameters
     ----------
-    AnnData
+    AnnData : AnnData
         AnnData object
-    k
+    k : int, optional
         Number of neighbours to consider.
         The default is 50.
-    max_overlap_metacells
+    max_overlap_metacells : float, optional
         Maximum percentage of overlapping cells between two metacells
         in order to consider them as different.
         The default is 0.9.
-    max_metacells
+    max_metacells : int, optional
         Maximum number of metacells to compute.
         The default is 5000.
-    dim_reduction
+    dim_reduction : str, optional
         Dimensionality reduction method to use to compute metacells.
         The default is 'lsi'.
-    projection
+    projection : str, optional
         Projection method to use to compute metacells.
         The default is 'umap'.
-    method
+    method : str, optional
         Method to use to compute metacells (mean or sum).
 
+    Returns
+    -------
+    metacells_AnnData : AnnData
+        AnnData object containing metacells.
     """
 
     lsi(AnnData)
@@ -96,6 +100,9 @@ def compute_metacells(
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
     metacells_AnnData.var_names = AnnData.var_names
+    metacells_AnnData.obs_names = [f"metacell_{i}" for i in range(len(metacells_values))]
+    metacells_AnnData.var = AnnData.var.copy()
+    metacells_AnnData.varp = AnnData.varp.copy()
 
     return metacells_AnnData
 
