@@ -89,9 +89,168 @@ def sort_regions(AnnData):
     return AnnData
 
 
+def compute_atac_network(
+    AnnData,
+    window_size=500000,
+    unit_distance=1000,
+    distance_constraint=250000,
+    s=0.75,
+    max_alpha_iteration=100,
+    distance_parameter_convergence=1e-22,
+    max_elements=200,
+    n_samples=100,
+    n_samples_maxtry=500
+):
+    """
+    Compute co-accessibility scores between regions in a sparse matrix, stored
+    in the varp slot of the passed AnnData object.
+    Scores are computed using 'sliding_graphical_lasso'.
+
+    1. First, the function calculates the optimal penalty coefficient alpha.
+        Alpha is calculated by averaging alpha values from 'n_samples' windows,
+        such as there's less than 5% of possible long-range edges
+        (> distance_constraint) and less than 20% co-accessible regions
+        (regardless of distance constraint) in each window.
+
+    2. Then, it will calculate co-accessibility scores between regions in a
+    sliding window of size 'window_size' and step 'window_size/2'.
+        Results should be very similar to Cicero's results. There is a strong
+        correlation between Cicero's co-accessibility scores and the ones
+        calculated by this function. However, absolute values are not the same,
+        because Cicero uses a different method to apply Graphical Lasso.
+
+    3. Finally, it will average co-accessibility scores across windows.
+
+    Parameters
+    ----------
+    AnnData : AnnData object
+        AnnData object with var_names as region names.
+    window_size : int, optional
+        Size of sliding window, in which co-accessible regions can be found.
+        The default is 500000.
+    unit_distance : int, optional
+        Distance between two regions in the matrix, in base pairs.
+        The default is 1000.
+    distance_constraint : int, optional
+        Distance threshold for defining long-range edges.
+        It is used to fit the penalty coefficient alpha.
+        The default is 250000.
+    s : float, optional
+        Parameter for penalizing long-range edges. The default is 0.75 and
+        should probably not be changed, unless you know what you are doing.
+    max_alpha_iteration : int, optional
+        Maximum number of iterations to calculate optimal penalty coefficient.
+        The default is 100.
+    distance_parameter_convergence : float, optional
+        Convergence parameter for alpha (penalty) coefficiant calculation.
+        The default is 1e-22.
+    max_elements : int, optional
+        Maximum number of regions in a window. The default is 200.
+    n_samples : int, optional
+        Number of windows used to calculate optimal penalty coefficient alpha.
+        The default is 100.
+    n_samples_maxtry : int, optional
+        Maximum number of windows to try to calculate optimal penalty
+        coefficient alpha. Should be higher than n_samples. The default is 500.
+
+    Returns
+    -------
+    None.
+
+    """
+
+    AnnData.varp['atac_network'] = sliding_graphical_lasso(
+        AnnData=AnnData,
+        window_size=window_size,
+        unit_distance=unit_distance,
+        distance_constraint=distance_constraint,
+        s=s,
+        max_alpha_iteration=max_alpha_iteration,
+        distance_parameter_convergence=distance_parameter_convergence,
+        max_elements=max_elements,
+        n_samples=n_samples,
+        n_samples_maxtry=n_samples_maxtry
+    )
+
+
+def extract_atac_links(
+    AnnData,
+    key=None,
+    columns=['Peak1', 'Peak2', 'score']
+):
+    """
+    Extract links from adata.varp[key] and return them as a DataFrame.
+    Since atac-networks scores are undirected, only one link is returned for
+    each pair of regions.
+
+    Parameters
+    ----------
+    AnnData : AnnData object
+        AnnData object with var_names as variable names.
+    key : str, optional
+        key from adata.varp. The default is None.
+        If None, and only one key is found in adata.varp, will use this key.
+        Otherwise if several keys are found in adata.varp, will raise an error.
+    columns : list, optional
+        Columns names of the output DataFrame.
+        The default is ['Peak1', 'Peak2', 'score'].
+
+    Returns
+    -------
+    DataFrame
+        DataFrame with columns names given by 'columns' parameter.
+    """
+
+    if key is None:  # if only one key (I guess often), no need to precise key
+        # maybe replace by a default one later
+        if len(list(AnnData.varp)) == 1:
+            key = list(AnnData.varp)[0]
+        else:
+            raise "Several keys were found in adata.varp: {}, ".format(
+                list(AnnData.varp))\
+                + "please precise which keyword use (arg 'key'))"
+    else:
+        if key not in list(AnnData.varp):
+            raise "The key you provided ({}) is not in adata.varp: {}".format(
+                key, list(AnnData.varp))
+
+    links = pd.DataFrame(
+        [(row, col, data) for (row, col, data) in zip(
+            [i for i in AnnData.varp[key].row],
+            [i for i in AnnData.varp[key].col],
+            AnnData.varp[key].data)
+            if row < col],
+        columns=columns
+        ).sort_values(by=columns[2], ascending=False)
+
+    links[columns[0]] = [AnnData.var_names[i] for i in links[columns[0]]]
+    links[columns[1]] = [AnnData.var_names[i] for i in links[columns[1]]]
+
+    return links
+
+
 def calc_penalty(alpha, distance, unit_distance=1000):
     """
-    todo
+    Calculate distance penalties for graphical lasso, based on the formula
+    from Cicero's paper: alpha * (1 - (unit_distance / distance) ** 0.75).
+
+    Non-finite and negative values are replaced by 0.
+
+    Parameters
+    ----------
+    alpha : float
+        Penalty coefficient.
+    distance : array
+        Distance between regions.
+    unit_distance : int, optional
+        Unit distance (in base pair) to divide distance by.
+        The default is 1000 for 1kb (as in Cicero's paper).
+
+    Returns
+    -------
+    penalties : np.array
+        Penalty coefficients for graphical lasso.
+
     """
     with np.errstate(divide="ignore"):
         penalties = alpha * (1 - (unit_distance / distance) ** 0.75)
@@ -102,10 +261,23 @@ def calc_penalty(alpha, distance, unit_distance=1000):
 
 def get_distances_regions(AnnData):
     """
-    todo
+    Get distances between regions, var_names from an AnnData object.
+    'add_regions_infos' should be run before this function.
+
+    Parameters
+    ----------
+    AnnData : AnnData object
+        AnnData object with var_names as region names.
+
+    Returns
+    -------
+    distance : np.array
+        Distance between regions.
     """
+
     # Store start and end positions in two arrays
-    m, n = np.meshgrid(AnnData.var["start"].values, AnnData.var["start"].values)
+    m, n = np.meshgrid(AnnData.var["start"].values,
+                       AnnData.var["start"].values)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -151,7 +323,6 @@ def local_alpha(
         penalties = calc_penalty(
             distance_parameter, distances, unit_distance=unit_distance
         )
-        
 
         # Initiating graphical lasso
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
@@ -243,8 +414,8 @@ def average_alpha(
                 # Get global indices of regions in the window
                 idx = np.where(
                     ((AnnData.var["chromosome"] == chromosome)
-                    & (AnnData.var["start"] >= start)
-                    & (AnnData.var["start"] <= end)))[0]
+                     & (AnnData.var["start"] >= start)
+                     & (AnnData.var["start"] <= end)))[0]
 
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
@@ -252,7 +423,10 @@ def average_alpha(
     if len(idx_list) < n_samples_maxtry:
         random_windows = idx_list
     else:
-        idx_list_indices = np.random.choice(len(idx_list), n_samples_maxtry, replace=True)
+        idx_list_indices = np.random.choice(
+            len(idx_list),
+            n_samples_maxtry,
+            replace=True)
         random_windows = [idx_list[i] for i in idx_list_indices]
 
     alpha_list = []
@@ -287,11 +461,11 @@ def average_alpha(
     else:
         print(
             """
-              only {} windows will be used to calculate optimal penalty,
-              wasn't able to find {} windows with a non-null number
-              of regions inferior to max_elements={},
-              AND having long-range edges (>distance_constraint)
-        .""".format(
+            only {} windows will be used to calculate optimal penalty,
+            wasn't able to find {} windows with a non-null number
+            of regions inferior to max_elements={},
+            AND having long-range edges (>distance_constraint)
+            .""".format(
                 len(alpha_list), n_samples, max_elements
             )
         )
@@ -317,6 +491,38 @@ def sliding_graphical_lasso(
 
     WARNING: might look generalised for many overlaps but is not yet at the
     end, that's why 'start_sliding' is hard coded as list of 2 values.
+
+    Parameters
+    ----------
+    AnnData : AnnData object
+        AnnData object with var_names as region names.
+    window_size : int, optional
+        Size of the sliding window, where co-accessible regions can be found.
+        The default is 500000.
+    unit_distance : int, optional
+        Distance between two regions in the matrix, in base pairs.
+        The default is 1000.
+    distance_constraint : int, optional
+        Distance threshold for defining long-range edges.
+        It is used to fit the penalty coefficient alpha.
+        The default is 250000.
+    s : float, optional
+        Parameter for penalizing long-range edges. The default is 0.75 and
+        should probably not be changed, unless you know what you are doing.
+    max_alpha_iteration : int, optional
+        Maximum number of iterations to calculate optimal penalty coefficient.
+        The default is 100.
+    distance_parameter_convergence : float, optional
+        Convergence parameter for alpha (penalty) coefficiant calculation.
+        The default is 1e-22.
+    max_elements : int, optional
+        Maximum number of regions in a window. The default is 200.
+    n_samples : int, optional
+        Number of windows used to calculate optimal penalty coefficient alpha.
+        The default is 100.
+    n_samples_maxtry : int, optional
+        Maximum number of windows to try to calculate optimal penalty
+        coefficient alpha. Should be higher than n_samples. The default is 500.
     """
 
     print("Calculating penalty coefficient alpha...")
@@ -349,7 +555,8 @@ def sliding_graphical_lasso(
 
         for chromosome in AnnData.var["chromosome"].unique():
             if k == 0:
-                print("Starting to processe chromosome : {}, 1/2".format(chromosome))
+                print("Starting to processe chromosome : {}, 1/2".format(
+                    chromosome))
             else:
                 print(chromosome, "2/2")
             # Get start positions of windows
@@ -368,8 +575,8 @@ def sliding_graphical_lasso(
                 # Get global indices of regions in the window
                 idx = np.where(
                     ((AnnData.var["chromosome"] == chromosome)
-                    & (AnnData.var["start"] >= start)
-                    & (AnnData.var["start"] <= end)))[0]
+                     & (AnnData.var["start"] >= start)
+                     & (AnnData.var["start"] <= end)))[0]
 
                 # already global ?
                 # Get global indices of regions in the window
@@ -386,10 +593,10 @@ def sliding_graphical_lasso(
                 if np.any(distance < 0):
                     raise ValueError(
                         """
-                                     Distance between regions should be
-                                     positive. You might have overlapping
-                                     regions.
-                                     """
+                        Distance between regions should be
+                        positive. You might have overlapping
+                        regions.
+                        """
                     )
 
                 window_penalties = calc_penalty(
@@ -443,7 +650,6 @@ def sliding_graphical_lasso(
                  (slide_results["idx"], slide_results["idy"])),
                 shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
             )
-
     return reconcile(results)
 
 
@@ -455,256 +661,13 @@ def reconcile(
     print("Averaging co-accessibility scores across windows...")
 
     # Sum of values per non-null locations
-    average = reduce(lambda x, y: x+y, [results_gl[k] for k in results_keys])
+    average = reduce(lambda x, y: x+y,
+                     [results_gl[k] for k in results_keys])
     # Number of non-null values per locations
     divider = reduce(lambda x, y: x+y,
-                     [results_gl[k].astype(bool).astype(int) for k in results_keys])
+                     [results_gl[k].astype(bool).astype(int)
+                      for k in results_keys])
     # divide sum by umber of non-null values, only for actual non-null values
     average.data = average.data/divider.data
-
-    return sp.sparse.coo_matrix(average)
-
-def deprecated_sliding_graphical_lasso(
-    AnnData,
-    window_size: int = 500_000,
-    unit_distance=1_000,
-    distance_constraint=250_000,
-    s=0.75,
-    max_alpha_iteration=100,
-    distance_parameter_convergence=1e-22,
-    max_elements=200,
-    n_samples=100,
-    n_samples_maxtry=500,
-):
-    """
-    Extract sliding submatrix from a sparse correlation matrix.
-
-    WARNING: might look generalised for many overlaps but is not yet at the
-    end, that's why 'start_sliding' is hard coded as list of 2 values.
-    """
-
-    print("Calculating penalty coefficient alpha...")
-    alpha = average_alpha(
-        AnnData,
-        window_size=window_size,
-        unit_distance=unit_distance,
-        n_samples=n_samples,
-        n_samples_maxtry=n_samples_maxtry,
-        max_alpha_iteration=max_alpha_iteration,
-        s=s,
-        distance_constraint=distance_constraint,
-        distance_parameter_convergence=distance_parameter_convergence,
-        max_elements=max_elements,
-    )
-    alpha = 0.23
-
-    start_slidings = [0, int(window_size / 2)]
-
-    results = {}
-    regions_list = AnnData.var_names
-    # Get global indices of regions
-    map_indices = {regions_list[i]: i for i in range(len(regions_list))}
-
-    print("Calculating co-accessibility scores...")
-    for k in start_slidings:
-        slide_results = {}
-        slide_results["scores"] = np.array([])
-        slide_results["idx"] = np.array([])
-        slide_results["idy"] = np.array([])
-
-        for chromosome in AnnData.var["chromosome"].unique():
-            if k == 0:
-                print(chromosome, "1/2")
-            else:
-                print(chromosome, "2/2")
-            # Get start positions of windows
-            window_starts = [
-                i
-                for i in range(
-                    k,
-                    AnnData.var["end"][
-                        AnnData.var["chromosome"] == chromosome].max(),
-                    window_size,
-                )
-            ]
-
-            for start in tqdm.tqdm(window_starts):
-                end = start + window_size
-                # Get global indices of regions in the window
-                idx = np.where(
-                    (AnnData.var["chromosome"] == chromosome
-                     &
-                     ((AnnData.var["end"] >= start & AnnData.var["end"] <= end)
-                      or
-                      (AnnData.var["start"] >= start & AnnData.var["start"] <= end)
-                      )))[0]
-
-                # already global ?
-                # Get global indices of regions in the window
-                # idx = [map_indices[i] for i in regions_list[idx]]
-
-                # Get submatrix
-                window_accessibility = AnnData.X[:, idx].copy()
-                window_scores = np.cov(window_accessibility, rowvar=False)
-                window_scores = window_scores + 1e-4 * np.eye(
-                    len(window_scores))
-
-                distance = get_distances_regions(AnnData[:, idx])
-                # Test if distance is negative
-                if np.any(distance < 0):
-                    raise ValueError(
-                        """
-                                     Distance between regions should be
-                                     positive. You might have overlapping
-                                     regions.
-                                     """
-                    )
-
-                window_penalties = calc_penalty(
-                    alpha,
-                    distance=distance,
-                    unit_distance=unit_distance)
-
-                # Initiating graphical lasso
-                graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-                    init_method="precomputed", lam=window_penalties
-                )
-
-                # Fit graphical lasso
-                graph_lasso_model.fit(window_scores)
-
-                # Names of regions in the window
-                window_region_names = AnnData.var_names[idx].copy()
-                # convert to sparse matrix the results
-                corrected_scores = sp.sparse.coo_matrix(
-                    graph_lasso_model.precision_)
-
-                # Convert corrected_scores column
-                # and row indices to global indices
-                idx = [
-                    map_indices[name]
-                    for name in window_region_names[corrected_scores.row]
-                ]
-                idy = [
-                    map_indices[name]
-                    for name in window_region_names[corrected_scores.col]
-                ]
-
-                # Add the "sub" resuls to the global sparse matrix
-                slide_results["scores"] = np.concatenate(
-                    [slide_results["scores"], corrected_scores.data]
-                )
-                slide_results["idx"] = np.concatenate(
-                    [slide_results["idx"], idx]
-                    )
-                slide_results["idy"] = np.concatenate(
-                    [slide_results["idy"], idy]
-                    )
-
-            # Create sparse matrix
-            results["window_" + str(k)] = sp.sparse.coo_matrix(
-                (slide_results["scores"],
-                 (slide_results["idx"], slide_results["idy"])),
-                shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
-            )
-
-    print("Averaging co-accessibility scores across windows...")
-    sliding_keys = ["window_" + str(k) for k in start_slidings]
-
-    k_positive_coords = []
-    k_negative_coords = []
-    for k in sliding_keys:
-        k_positive_coords.append(
-            {
-                (x, y)
-                for x, y, d in zip(
-                    results[k].row,
-                    results[k].col,
-                    results[k].data)
-                if d >= 0
-            }
-        )
-        k_negative_coords.append(
-            {
-                (x, y)
-                for x, y, d in zip(
-                    results[k].row,
-                    results[k].col,
-                    results[k].data)
-                if d <= 0
-            }
-        )
-
-    # Get shared positive and negative coordinates intersection
-    positive_coords = set.intersection(*k_positive_coords)
-    negative_coords = set.intersection(*k_negative_coords)
-
-    # Shared and same sign coordinates
-    coords = pd.DataFrame(
-        set.union(negative_coords, positive_coords), columns=["row", "col"]
-    )
-
-    # Add common signe values
-    average = [
-        sp.sparse.csr_matrix(
-            (
-                sp.sparse.csr_matrix(
-                    sp.sparse.csr_matrix(results[k])[coords["row"],
-                                                     coords["col"]]
-                ).data,
-                (coords["row"], coords["col"]),
-            ),
-            shape=results[k].shape,
-        )
-        for k in sliding_keys[:]
-    ]
-
-    average = reduce(lambda x, y: x + y, average)
-
-    # Divide for mean value
-    average = average / len(sliding_keys)
-
-    # Add uni-measurement values
-    # Get all shared coordinates
-    l_all_coords = []
-    for k in sliding_keys:
-        l_all_coords.append(
-            {(x, y) for x, y, d in zip(
-                results[k].row,
-                results[k].col,
-                results[k].data)}
-        )
-    all_coords = set.intersection(*l_all_coords)
-
-    for k in sliding_keys:
-        # get all coordinates in a set
-        k_coords = {
-            (x, y) for x, y, d in zip(
-                results[k].row,
-                results[k].col,
-                results[k].data)
-        }
-        # Substract all shared coordinates to this set
-        k_coords = pd.DataFrame(
-            k_coords.difference(all_coords),
-            columns=["row", "col"])
-
-        # Add values to the results
-        k_single = sp.sparse.csr_matrix(
-            (
-                sp.sparse.csr_matrix(  # csr_matrix to re-store as sparse
-                    # since accessed by coordinates might return unsparsed
-                    sp.sparse.csr_matrix(  # csr_matrix to access by coords
-                        results[k])[k_coords["row"], k_coords["col"]]
-                ).data,
-                (k_coords["row"], k_coords["col"]),
-            ),
-            shape=results[k].shape,
-        )
-
-        average = average + k_single
-
-    # FIX/ADD Add a way of handling value with non maximal number of overlap
-    # if more than 1 overlap with the windows
 
     return sp.sparse.coo_matrix(average)
