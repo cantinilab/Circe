@@ -1,4 +1,5 @@
 import sklearn
+import scipy as sp
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import normalize
 
@@ -23,12 +24,41 @@ def compute_metacells(
     (It has been implemented to be close to Cicero/Monocle3 code 
     from Trapnell lab).
 
-    TODO
+    Parameters
+    ----------
+    AnnData
+        AnnData object
+    k
+        Number of neighbours to consider.
+        The default is 50.
+    max_overlap_metacells
+        Maximum percentage of overlapping cells between two metacells
+        in order to consider them as different.
+        The default is 0.9.
+    max_metacells
+        Maximum number of metacells to compute.
+        The default is 5000.
+    dim_reduction
+        Dimensionality reduction method to use to compute metacells.
+        The default is 'lsi'.
+    projection
+        Projection method to use to compute metacells.
+        The default is 'umap'.
+    method
+        Method to use to compute metacells (mean or sum).
+
     """
 
     lsi(AnnData)
-    sc.pp.neighbors(AnnData, use_rep="X_lsi", metric="cosine")
-    sc.tl.umap(AnnData)
+    if dim_reduction == 'lsi':
+        sc.pp.neighbors(AnnData, use_rep="X_lsi", metric="cosine")
+    else:
+        raise "Only LSI is implemented for now."
+
+    if projection == 'umap':
+        sc.tl.umap(AnnData)
+    else:
+        raise "Only UMAP is implemented for now."
 
     # Identify non-overlapping above a threshold metacells
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm['X_umap'])
@@ -58,7 +88,7 @@ def compute_metacells(
             metacells_values.append(
                 np.mean([AnnData.X[i] for i in metacell], 0)
             )
-        if method == 'sum':
+        elif method == 'sum':
             metacells_values.append(
                sum([AnnData.X[i] for i in metacell])
             )
@@ -74,6 +104,7 @@ def compute_metacells(
 def tfidf(X):
     r"""
     TF-IDF normalization (following the Seurat v3 approach)
+    # from scGLUE : https://github.com/gao-lab/GLUE/blob/master/scglue
 
     Parameters
     ----------
@@ -100,6 +131,7 @@ def lsi(
 ) -> None:
     r"""
     LSI analysis (following the Seurat v3 approach)
+    # from scGLUE : https://github.com/gao-lab/GLUE/blob/master/scglue
 
     Parameters
     ----------
