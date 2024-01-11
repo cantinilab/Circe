@@ -555,10 +555,11 @@ def sliding_graphical_lasso(
 
         for chromosome in AnnData.var["chromosome"].unique():
             if k == 0:
-                print("Starting to processe chromosome : {}, 1/2".format(
+                print("Starting to process chromosome : {}, 1/2".format(
                     chromosome))
             else:
-                print(chromosome, "2/2")
+                print("Finishing to process chromosome : {}, 1/2".format(
+                    chromosome))
             # Get start positions of windows
             window_starts = [
                 i
@@ -650,7 +651,10 @@ def sliding_graphical_lasso(
                  (slide_results["idx"], slide_results["idy"])),
                 shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
             )
-    return reconcile(results)
+    results = reconcile(results)
+
+    print("Done !")
+    return results
 
 
 def reconcile(
