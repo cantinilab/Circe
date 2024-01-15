@@ -21,8 +21,9 @@ else:
 
 extensions = [
     Extension("atac_networks.pyquic",
+              packages=["atac_networks", "atac_networks.pyquic"],
               include_dirs=include_dirs,
-              sources=["ext/src/QUIC.C", "ext/src/pyquic.pyx"],
+              sources=["atac_networks/pyquic/QUIC.C", "atac_networks/pyquic/pyquic.pyx"],
               extra_compile_args=extra_compile_args,
               extra_link_args=extra_link_args,
               language="c++"
