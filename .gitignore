@@ -17,3 +17,9 @@ dist
 
 # Ignore poetry.lock file
 poetry.lock
+
+#Ignore egg-info directory
+*.egg-info
+
+# Ignore VSCode settings
+*.code-workspace
