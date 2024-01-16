@@ -1,4 +1,4 @@
-# atac-networks
+# AtacNet
 
 
 ## Description
@@ -11,22 +11,22 @@ Results may vary between both packages, notably due to the different implementat
 
 
 ## Installation
-The package can be installed using pip **(in editable mode -e)**:
+The package can be installed using pip:
 
 ```
-pip install -e "git+https://github.com/r-trimbour/atac-networks.git#egg=atac-networks"
+pip install "git+https://github.com/r-trimbour/atacnet.git"
 ```
 
  or by installing it from a local clone
 ```
-git clone https://github.com/r-trimbour/atac-networks.git
-pip install -e "atac-networks"
+git clone https://github.com/r-trimbour/atacnet.git
+pip install "atacnet"
 ```
 
 ## Minimal example
 ```
 import anndata as ad
-import atac_networks as an
+import atacnet as an
 
 atac = ad.read_h5ad('atac_data.h5ad')
 an.add_region_infos(atac)
