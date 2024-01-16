@@ -2,13 +2,13 @@
 from setuptools import setup
 
 packages = \
-['atac_networks']
+['atacnet']
 
 package_data = \
 {'': ['*']}
 
 setup_kwargs = {
-    'name': 'atac_networks',
+    'name': 'atacnet',
     'version': '0.1.0',
     'description': '',
     'long_description': 'None',

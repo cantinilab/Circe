@@ -1,9 +1,9 @@
 [tool.poetry]
-name = "atac-networks"
+name = "atacnet"
 version = "0.1.0"
 description = "Package for building co-accessibility networks from ATAC-seq data."
 authors = ["Rémi Trimbour <remi.trimbour@pasteur.fr>"]
-packages = [{include = "atac_networks"}]
+packages = [{include = "atacnet"}]
 
 
 [tool.poetry.build]
