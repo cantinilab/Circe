@@ -262,7 +262,7 @@ def calc_penalty(alpha, distance, unit_distance=1000):
 def get_distances_regions(AnnData):
     """
     Get distances between regions, var_names from an AnnData object.
-    'add_regions_infos' should be run before this function.
+    'add_region_infos' should be run before this function.
 
     Parameters
     ----------
