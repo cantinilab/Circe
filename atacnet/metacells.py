@@ -2,7 +2,6 @@ import sklearn
 import scipy as sp
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import normalize
-
 import numpy as np
 import anndata as ad
 import scanpy as sc
@@ -89,13 +88,23 @@ def compute_metacells(
     metacells_values = []
     for metacell in metacells:
         if method == 'mean':
-            metacells_values.append(
-                np.mean([AnnData.X[i] for i in metacell], 0)
-            )
+            if sp.sparse.issparse(AnnData.X):
+                metacells_values.append(
+                    np.array(np.mean([AnnData.X[i].toarray() for i in metacell], 0))[0]
+                )
+            else:
+                metacells_values.append(
+                    np.mean([AnnData.X[i] for i in metacell], 0)
+                )
         elif method == 'sum':
-            metacells_values.append(
-               sum([AnnData.X[i] for i in metacell])
-            )
+            if sp.sparse.issparse(AnnData.X):
+                metacells_values.append(
+                    np.array(sum([AnnData.X[i].toarray() for i in metacell]))[0]
+                )
+            else:
+                metacells_values.append(
+                    sum([AnnData.X[i] for i in metacell])
+                )
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
