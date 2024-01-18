@@ -14,13 +14,12 @@ Results may vary between both packages, notably due to the different implementat
 The package can be installed using pip:
 
 ```
-pip install "git+https://github.com/r-trimbour/atacnet.git"
+pip install atacnet
 ```
 
- or by installing it from a local clone
+ and from github
 ```
-git clone https://github.com/r-trimbour/atacnet.git
-pip install "atacnet"
+pip install "git+https://github.com/r-trimbour/atacnet.git"
 ```
 
 ## Minimal example
@@ -38,7 +37,7 @@ an.extract_atac_links(atac)
 ### Toy dataset 1: 
 <br> *On the same metacells obtained from Cicero code.*
 - Pearson correlation coefficient: 0.99
-- Pearson correlation coefficient: 0.98
+- Spearman correlation coefficient: 0.98
 <img src="Figures/correlation_toy_dataset1.png" align="center" width="480"/>
 
 ### Coming:
