@@ -305,6 +305,9 @@ def local_alpha(
                          You might want to take less regions for computational
                          time or increase max_elements."""
         )
+    if sp.sparse.issparse(X):
+        X = X.toarray()
+    
     # Check if distance_constraint is not too high
     if (distances > distance_constraint).sum() <= 1:
         return "No long edges"
@@ -558,9 +561,10 @@ def sliding_graphical_lasso(
         else:
             print("Finishing to process chromosomes : {}".format(
                 AnnData.var["chromosome"].unique()))
-        for chromosome in track(AnnData.var["chromosome"].unique(),
-                                description="Calculating co-accessibility: {}/2".format(
-                                    1 if k == 0 else 2),):
+        for chromosome in track(
+            AnnData.var["chromosome"].unique(),
+            description="Calculating co-accessibility: {}/2".format(
+                1 if k == 0 else 2),):
             # Get start positions of windows
             window_starts = [
                 i
@@ -584,6 +588,9 @@ def sliding_graphical_lasso(
                 # Get global indices of regions in the window
                 # idx = [map_indices[i] for i in regions_list[idx]]
 
+                if idx is None or len(idx) <= 1:
+                    print("Less than two regions in window")
+                    continue
                 # Get submatrix
                 if sp.sparse.issparse(AnnData.X):
                     print("Warning: sparse matrix not implemented yet")
@@ -591,13 +598,16 @@ def sliding_graphical_lasso(
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
+
+                    distance = get_distances_regions(AnnData[idx, :].toarray())
+
                 else:
                     window_accessibility = AnnData.X[:, idx].copy()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
 
-                distance = get_distances_regions(AnnData[:, idx])
+                    distance = get_distances_regions(AnnData[:, idx])
                 # Test if distance is negative
                 if np.any(distance < 0):
                     raise ValueError(

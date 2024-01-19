@@ -71,7 +71,7 @@ def compute_metacells(
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
     metacells = [indices[0]]
     iterations = 0
-    for i in track(indices[1:]):
+    for i in track(indices[1:], description="Computing metacells..."):
         if iterations >= max_metacells-1:
             break
 
