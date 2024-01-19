@@ -594,8 +594,7 @@ def sliding_graphical_lasso(
 
                 # Get submatrix
                 if sp.sparse.issparse(AnnData.X):
-                    print("Warning: sparse matrix not implemented yet")
-                    window_accessibility = AnnData.X[idx, :].toarray()
+                    window_accessibility = AnnData.X[:, idx].toarray()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
