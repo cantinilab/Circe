@@ -591,6 +591,7 @@ def sliding_graphical_lasso(
                 if idx is None or len(idx) <= 1:
                     print("Less than two regions in window")
                     continue
+
                 # Get submatrix
                 if sp.sparse.issparse(AnnData.X):
                     print("Warning: sparse matrix not implemented yet")
