@@ -5,7 +5,7 @@ from sklearn.preprocessing import normalize
 import numpy as np
 import anndata as ad
 import scanpy as sc
-from tqdm import tqdm
+from rich.progress import track
 
 def compute_metacells(
         AnnData,
@@ -71,7 +71,7 @@ def compute_metacells(
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
     metacells = [indices[0]]
     iterations = 0
-    for i in tqdm(indices[1:]):
+    for i in track(indices[1:]):
         if iterations >= max_metacells-1:
             break
 

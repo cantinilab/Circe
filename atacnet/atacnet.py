@@ -4,7 +4,7 @@ warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categor
 
 import numpy as np
 import pandas as pd
-import tqdm
+from rich.progress import track
 import scipy as sp
 from . import quic_graph_lasso
 from functools import reduce
@@ -431,7 +431,7 @@ def average_alpha(
         random_windows = [idx_list[i] for i in idx_list_indices]
 
     alpha_list = []
-    for window in tqdm.tqdm(random_windows):
+    for window in track(random_windows, description="Calculating alpha"):
         distances = get_distances_regions(
             AnnData[:, window]
             )
@@ -526,7 +526,7 @@ def sliding_graphical_lasso(
         coefficient alpha. Should be higher than n_samples. The default is 500.
     """
 
-    print("Calculating penalty coefficient alpha...")
+    # print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
         AnnData,
         window_size=window_size,
@@ -547,7 +547,6 @@ def sliding_graphical_lasso(
     # Get global indices of regions
     map_indices = {regions_list[i]: i for i in range(len(regions_list))}
 
-    print("Calculating co-accessibility scores...")
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
@@ -559,7 +558,9 @@ def sliding_graphical_lasso(
         else:
             print("Finishing to process chromosomes : {}".format(
                 AnnData.var["chromosome"].unique()))
-        for chromosome in tqdm.tqdm(AnnData.var["chromosome"].unique()):
+        for chromosome in track(AnnData.var["chromosome"].unique(),
+                                description="Calculating co-accessibility: {}/2".format(
+                                    1 if k == 0 else 2),):
             # Get start positions of windows
             window_starts = [
                 i
@@ -585,7 +586,8 @@ def sliding_graphical_lasso(
 
                 # Get submatrix
                 if sp.sparse.issparse(AnnData.X):
-                    window_accessibility = AnnData.X[idx, :].toarray().copy()
+                    print("Warning: sparse matrix not implemented yet")
+                    window_accessibility = AnnData.X[idx, :].toarray()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
