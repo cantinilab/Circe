@@ -600,15 +600,14 @@ def sliding_graphical_lasso(
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
 
-                    distance = get_distances_regions(AnnData[idx, :].toarray())
-
                 else:
                     window_accessibility = AnnData.X[:, idx].copy()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
 
-                    distance = get_distances_regions(AnnData[:, idx])
+                distance = get_distances_regions(AnnData[:, idx])
+
                 # Test if distance is negative
                 if np.any(distance < 0):
                     raise ValueError(
