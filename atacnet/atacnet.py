@@ -589,7 +589,7 @@ def sliding_graphical_lasso(
                 # idx = [map_indices[i] for i in regions_list[idx]]
 
                 if idx is None or len(idx) <= 1:
-                    print("Less than two regions in window")
+                    # print("Less than two regions in window")
                     continue
 
                 # Get submatrix
