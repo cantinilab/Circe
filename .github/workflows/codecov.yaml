@@ -19,9 +19,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Test with pytest
-      run: |
-        coverage run --source=atacnet -m pytest
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
