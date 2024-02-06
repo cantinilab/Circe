@@ -8,9 +8,3 @@ repos:
     hooks:
       - id: isort
         args: ["--profile=black"] # <-- this one
-  - repo: https://github.com/nbQA-dev/nbQA
-    rev: 1.6.3
-    hooks:
-    - id: nbqa-pyupgrade
-     # args: [--py38-plus]
-    - id: nbqa-black
