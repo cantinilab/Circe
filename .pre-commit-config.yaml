@@ -20,5 +20,3 @@ repos:
     - id: nbqa-pyupgrade
      # args: [--py38-plus]
     - id: nbqa-black
-    - id: nbqa-isort
-      args: ["--profile=black"]
