@@ -13,6 +13,6 @@ repos:
     rev: 1.6.3
     hooks:
     - id: nbqa-pyupgrade
-      args: [--py38-plus]
+     # args: [--py38-plus]
     - id: nbqa-black
     - id: nbqa-isort
