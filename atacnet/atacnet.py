@@ -10,6 +10,27 @@ from . import quic_graph_lasso
 from functools import reduce
 
 
+def cov_to_cor(cov_matrix, tol=1e-4):
+    """Convert covariance matrix to correlation matrix, with a tolerance for diagonal elements."""
+    # Diagonal elements (variances)
+    d = np.sqrt(cov_matrix.diagonal())
+    
+    # Apply tolerance: if a variance is less than tol, use it directly instead of normalizing to 1.
+    # This avoids division by very small numbers which can lead to numerical instability.
+    d_tol = np.where(d < tol, cov_matrix.diagonal(), d)
+    
+    # Outer product of the adjusted standard deviations vector
+    d_matrix = np.outer(d_tol, d_tol)
+    
+    # Element-wise division of the covariance matrix by the d_matrix
+    correlation_matrix = cov_matrix / d_matrix
+    
+    # Ensure the diagonal elements are 1 or the original diagonal value if it's below tolerance
+    np.fill_diagonal(correlation_matrix, np.where(d < tol, cov_matrix.diagonal(), 1))
+    
+    return correlation_matrix
+
+
 def add_region_infos(AnnData, sep=("_", "_"), inplace=True):
     """
     Get region informations from the var_names of AnnData object.
@@ -633,12 +654,17 @@ def sliding_graphical_lasso(
 
                 # Fit graphical lasso
                 graph_lasso_model.fit(window_scores)
+                
 
                 # Names of regions in the window
                 window_region_names = AnnData.var_names[idx].copy()
+
+                # Transform to correlation matrix
+                scores = cov_to_corr(graph_lasso_model.covariance_)
+
                 # convert to sparse matrix the results
                 corrected_scores = sp.sparse.coo_matrix(
-                    graph_lasso_model.covariance_)
+                    scores)
 
                 # Convert corrected_scores column
                 # and row indices to global indices
