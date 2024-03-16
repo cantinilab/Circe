@@ -10,7 +10,7 @@ from . import quic_graph_lasso
 from functools import reduce
 
 
-def cov_to_cor(cov_matrix, tol=1e-4):
+def cov_to_corr(cov_matrix, tol=1e-4):
     """Convert covariance matrix to correlation matrix, with a tolerance for diagonal elements."""
     # Diagonal elements (variances)
     d = np.sqrt(cov_matrix.diagonal())
