@@ -7,7 +7,7 @@ This repo contains a python package for inferring **co-accessibility networks fr
 It is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
 
 Results may slitghly vary between both packages, notably due to the different implementations of graphical lasso. 
-<br> Currently, scores are very close when applied to the same metacells, computed from Cicero's methodology. (cf comparison plots below)
+<br> Currently, scores are very close when applied to the same metacells, computed from Cicero's methodology. (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
 
 _If you have any suggestion, don't hesitate ! This package is still a work in progress :)_
 
@@ -49,14 +49,14 @@ All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trim
 - Pearson correlation coefficient: 0.993
 - Spearman correlation coefficient: 0.991
 <img src="Figures/correlation_real_dataset2.png" align="center" width="480"/>
+
 _Correlation is even higher if focusing only on high scores. Indeed, for both datasets, most of the variability is focused on the low scores, a.k.a. the less important ones._
 
 ### Coming:
 
+- _**Calculate metacells !**_
 - _Add stats on similarity on large datasets._
-<br>
 - _Add stats on runtime, memory usage._
-<br>
 - This package can be run on multiple cores. _Currently working to speed up the mutlithreding use._
 
 ## Usage
