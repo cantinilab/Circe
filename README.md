@@ -37,6 +37,9 @@ an.extract_atac_links(atac)
 
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
+
+All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trimbour/atacnet_benchmark)
+
 ### Toy dataset 1 (fake data): 
 - Pearson correlation coefficient: 0.993
 - Spearman correlation coefficient: 0.992
