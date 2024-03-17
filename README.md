@@ -49,7 +49,7 @@ All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trim
 - Pearson correlation coefficient: 0.993
 - Spearman correlation coefficient: 0.991
 <img src="Figures/correlation_real_dataset2.png" align="center" width="480"/>
-_Correlation_ is even higher if focusing only on high scores. Indeed, for both datasets, most of the variability is focused on the low scores, a.k.a. the less important ones. 
+_Correlation is even higher if focusing only on high scores. Indeed, for both datasets, most of the variability is focused on the low scores, a.k.a. the less important ones._
 
 ### Coming:
 
