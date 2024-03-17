@@ -53,11 +53,11 @@ _Correlation is even higher if focusing only on high scores. Indeed, for both da
 
 ### Coming:
 
-_Add stats on similarity on large datasets._
+- _Add stats on similarity on large datasets._
 <br>
-_Add stats on runtime, memory usage._
+- _Add stats on runtime, memory usage._
 <br>
-This package can be run on multiple cores. _Currently working to speed up the mutlithreding use._
+- This package can be run on multiple cores. _Currently working to speed up the mutlithreding use._
 
 ## Usage
 It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
