@@ -10,7 +10,7 @@ from . import quic_graph_lasso
 from functools import reduce
 
 
-def cov_to_corr(cov_matrix, tol=1e-4):
+def cov_to_corr(cov_matrix, tol=1e-20):
     """Convert covariance matrix to correlation matrix, with a tolerance for diagonal elements."""
     # Diagonal elements (variances)
     d = np.sqrt(cov_matrix.diagonal())
@@ -297,8 +297,8 @@ def get_distances_regions(AnnData):
     """
 
     # Store start and end positions in two arrays
-    m, n = np.meshgrid(AnnData.var["start"].values,
-                       AnnData.var["start"].values)
+    m, n = np.meshgrid((AnnData.var["end"].values + AnnData.var["start"].values)/2,
+                       (AnnData.var["end"].values + AnnData.var["start"].values)/2)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -411,6 +411,7 @@ def average_alpha(
     distance_constraint=250000,
     distance_parameter_convergence=1e-22,
     max_elements=200,
+    chromosomes_sizes=None,
 ):
     """
     todo
@@ -424,13 +425,24 @@ def average_alpha(
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
         for chromosome in AnnData.var["chromosome"].unique():
+            if chromosomes_sizes is None:
+                chromosome_size = AnnData.var["end"][
+                    AnnData.var["chromosome"] == chromosome].max()
+            else:
+                try:
+                    chromosome_size = chromosomes_sizes[chromosome]
+                except Warning:
+                    print(
+                        "{} not found as key in chromosome_size, using max end position".format(
+                            chromosome))
+                    chromosome_size = AnnData.var["end"][
+                        AnnData.var["chromosome"] == chromosome].max()
             # Get start positions of windows
             window_starts = [
                 i
                 for i in range(
                     k,
-                    AnnData.var["end"][
-                        AnnData.var["chromosome"] == chromosome].max(),
+                    chromosome_size,
                     window_size,
                 )
             ]
