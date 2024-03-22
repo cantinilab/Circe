@@ -722,11 +722,24 @@ def reconcile(
     # Sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
+    
+    # remove all values where there is no sign agreement between windows
+    signs_aggreeing = reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y < 0)),
+        [results_gl[k] for k in results_keys])
+    signs_aggreeing += reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x > 0), (y > 0)),
+        [results_gl[k] for k in results_keys])
+    
+    average = sp.sparse.csr_matrix.multiply(average, signs_aggreeing)
+
     # Number of non-null values per locations
     divider = reduce(lambda x, y: x+y,
                      [results_gl[k].astype(bool).astype(int)
                       for k in results_keys])
-    # divide sum by umber of non-null values, only for actual non-null values
+    divider = sp.sparse.csr_matrix.multiply(divider, signs_aggreeing)
+
+    # divide sum by number of non-null values, only for actual non-null values
     average.data = average.data/divider.data
 
     return sp.sparse.coo_matrix(average)

@@ -41,16 +41,15 @@ an.extract_atac_links(atac)
 All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trimbour/atacnet_benchmark)
 
 ### Toy dataset 1 (fake data): 
-- Pearson correlation coefficient: 0.998845
-- Spearman correlation coefficient: 0.997321
+- Pearson correlation coefficient: 0.999126
+- Spearman correlation coefficient: 0.99838
 <img src="Figures/correlation_toy_dataset1.png" align="center" width="480"/>
 
 ### Real dataset 2 (subsample of neurips PBMC)
-- Pearson correlation coefficient: 0.999733
-- Spearman correlation coefficient: 0.999279
+- Pearson correlation coefficient: 0.999958
+- Spearman correlation coefficient: 0.999911
 <img src="Figures/correlation_real_dataset2.png" align="center" width="480"/>
 
-_Correlation is even higher if focusing only on high scores. Indeed, for both datasets, most of the variability is focused on the low scores, a.k.a. the less important ones._
 
 ### Coming:
 
@@ -58,6 +57,7 @@ _Correlation is even higher if focusing only on high scores. Indeed, for both da
 - _Add stats on similarity on large datasets._
 - _Add stats on runtime, memory usage._
 - This package can be run on multiple cores. _Currently working to speed up the mutlithreding use._
+- _Fix seed for reproducibility._
 
 ## Usage
 It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
