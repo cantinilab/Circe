@@ -43,12 +43,12 @@ All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trim
 ### Toy dataset 1 (fake data): 
 - Pearson correlation coefficient: 0.998845
 - Spearman correlation coefficient: 0.997321
-<img src="Figures/correlation_toy_dataset1.png" align="center" width="480"/>
+<img src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
 
 ### Real dataset 2 (subsample of neurips PBMC)
 - Pearson correlation coefficient: 0.999733
 - Spearman correlation coefficient: 0.999279
-<img src="Figures/correlation_real_dataset2.png" align="center" width="480"/>
+<img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
 
 _Correlation is even higher if focusing only on high scores. Indeed, for both datasets, most of the variability is focused on the low scores, a.k.a. the less important ones._
 
