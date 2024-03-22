@@ -41,7 +41,6 @@ an.extract_atac_links(atac)
 All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trimbour/atacnet_benchmark)
 
 ### Toy dataset 1 (fake data): 
-<<<<<<< HEAD
 - Pearson correlation coefficient: 0.999126
 - Spearman correlation coefficient: 0.99838
 <img src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
