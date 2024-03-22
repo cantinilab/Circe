@@ -44,23 +44,12 @@ All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trim
 <<<<<<< HEAD
 - Pearson correlation coefficient: 0.999126
 - Spearman correlation coefficient: 0.99838
-<img src="Figures/correlation_toy_dataset1.png" align="center" width="480"/>
+<img src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
 
 ### Real dataset 2 (subsample of neurips PBMC)
 - Pearson correlation coefficient: 0.999958
 - Spearman correlation coefficient: 0.999911
-<img src="Figures/correlation_real_dataset2.png" align="center" width="480"/>
-=======
-- Pearson correlation coefficient: 0.998845
-- Spearman correlation coefficient: 0.997321
-<img src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
-
-### Real dataset 2 (subsample of neurips PBMC)
-- Pearson correlation coefficient: 0.999733
-- Spearman correlation coefficient: 0.999279
 <img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
->>>>>>> f193ab37744136c52c3e7092b56d14e3b9dbb2da
-
 
 ### Coming:
 
