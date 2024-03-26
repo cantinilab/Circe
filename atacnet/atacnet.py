@@ -722,7 +722,7 @@ def reconcile(
     # Sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
-    
+
     # remove all values where there is no sign agreement between windows
     signs_aggreeing = reduce(
         lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y < 0)),

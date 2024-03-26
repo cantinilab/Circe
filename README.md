@@ -51,6 +51,11 @@ All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trim
 - Spearman correlation coefficient: 0.999911
 <img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
 
+Performance on real dataset 2:
+- Runtime: ~100x faster
+- Memory usage: ~5x less
+<img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/perf_real_dataset2.png" align="center" width="480"/>
+
 ### Coming:
 
 - _**Calculate metacells !**_
