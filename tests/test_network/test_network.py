@@ -2,7 +2,9 @@ import atacnet as an
 import anndata as ad
 import numpy as np
 import pandas as pd
+import os 
 
+os.chdir('tests')
 
 # Create fake single-cell atac-seq data
 nb_cells = 300
