@@ -28,7 +28,7 @@ def test_annotation_functions():
 
 
 def test_network_atac():
-
+    os.chdir('tests')
     # Add region annotations in AnnData.var dataframe
     an.add_region_infos(atac)
 
