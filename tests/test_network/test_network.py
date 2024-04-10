@@ -8,7 +8,7 @@ import pandas as pd
 import os
 print(sys.path)
 sys.path = syspath
-print(atacnet)
+print(an)
 #os.chdir('atacnet/')
 
 # Create fake single-cell atac-seq data
