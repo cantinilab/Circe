@@ -22,3 +22,23 @@ distance_threshold = 50000
 def test_annotation_functions():
   # Add region annotations in AnnData.var dataframe
   an.add_region_infos(atac)
+
+
+def test_network_atac():
+    # Add region annotations in AnnData.var dataframe
+    an.add_regions_infos(atac)
+
+    # Compute network and add it directly in AnnData.varp attribute
+    an.compute_atac_network(
+        atac, #metacells,
+        window_size=distance_threshold,
+        unit_distance = 1000,
+        distance_constraint=distance_threshold/2,
+        n_samples=50,
+        n_samples_maxtry=100,
+        max_alpha_iteration=60
+    )
+
+    # Extract from AnnData.varp the dataframe listing the edges (peak1 - peak2)
+    # Names are sorted by alphabetical order (Peak1 < Peak2)
+    an.extract_atac_links(atac)
