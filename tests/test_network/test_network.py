@@ -1,6 +1,6 @@
 import sys
 syspath = sys.path
-sys.path  = [path for path in sys.path if path.strip('.')]
+sys.path  = [path for path in sys.path if "python" in path]
 import atacnet as an
 import anndata as ad
 import numpy as np
