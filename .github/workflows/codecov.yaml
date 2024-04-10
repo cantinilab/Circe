@@ -33,7 +33,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        coverage run -m pytest --rootdir=../test
+        coverage run -m pytest --rootdir=../tests
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
