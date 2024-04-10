@@ -26,7 +26,7 @@ def test_annotation_functions():
 
 def test_network_atac():
     # Add region annotations in AnnData.var dataframe
-    an.add_regions_infos(atac)
+    an.add_region_infos(atac)
 
     # Compute network and add it directly in AnnData.varp attribute
     an.compute_atac_network(
