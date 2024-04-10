@@ -1,4 +1,6 @@
 # ATACnet
+[![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
+[![PyPI version](https://img.shields.io/pypi/v/hummuspy?color=pink)](https://img.shields.io/pypi/v/hummuspy?color=pink)
 
 
 ## Description
