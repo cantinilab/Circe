@@ -318,6 +318,7 @@ def local_alpha(
     distance_parameter_convergence=1e-22,
     max_elements=200,
     unit_distance=1000,
+    init_method="precomputed"
 ):
     """
     todo
@@ -353,7 +354,7 @@ def local_alpha(
 
         # Initiating graphical lasso
         graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-            init_method="precomputed",
+            init_method=init_method,
             lam=penalties,
             tol=1e-4,
             max_iter=1e4,
@@ -525,6 +526,7 @@ def sliding_graphical_lasso(
     max_elements=200,
     n_samples=100,
     n_samples_maxtry=500,
+    init_method="precomputed",
 ):
     """
     Extract sliding submatrix from a sparse correlation matrix.
@@ -563,6 +565,10 @@ def sliding_graphical_lasso(
     n_samples_maxtry : int, optional
         Maximum number of windows to try to calculate optimal penalty
         coefficient alpha. Should be higher than n_samples. The default is 500.
+    init_method : str, optional
+        Method to use to compute initial covariance matrix.
+        The default is "precomputed".
+        SHOULD BE CHANGED CAREFULLY.
     """
 
     # print("Calculating penalty coefficient alpha...")
@@ -660,7 +666,7 @@ def sliding_graphical_lasso(
 
                 # Initiating graphical lasso
                 graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-                    init_method="precomputed",
+                    init_method=init_method,
                     lam=window_penalties,
                     tol=1e-4,
                     max_iter=1e4,
