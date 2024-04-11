@@ -14,52 +14,52 @@ def cov_to_corr(cov_matrix, tol=1e-20):
     """Convert covariance matrix to correlation matrix, with a tolerance for diagonal elements."""
     # Diagonal elements (variances)
     d = np.sqrt(cov_matrix.diagonal())
-    
+
     # Apply tolerance: if a variance is less than tol, use it directly instead of normalizing to 1.
     # This avoids division by very small numbers which can lead to numerical instability.
     d_tol = np.where(d < tol, cov_matrix.diagonal(), d)
-    
+
     # Outer product of the adjusted standard deviations vector
     d_matrix = np.outer(d_tol, d_tol)
-    
+
     # Element-wise division of the covariance matrix by the d_matrix
     correlation_matrix = cov_matrix / d_matrix
-    
+
     # Ensure the diagonal elements are 1 or the original diagonal value if it's below tolerance
     np.fill_diagonal(correlation_matrix, np.where(d < tol, cov_matrix.diagonal(), 1))
-    
+
     return correlation_matrix
 
 
-def add_region_infos(AnnData, sep=("_", "_"), inplace=True):
+def add_region_infos(anndata, sep=("_", "_"), inplace=True):
     """
-    Get region informations from the var_names of AnnData object.
+    Get region informations from the var_names of anndata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
                              'start' : 12345,
                              'end' : 12346
-    These info will be added to var of AnnData object.
+    These info will be added to var of anndata object.
         adata.var['chromosome'] : chromosome
         adata.var['start'] : start position
         adata.var['end'] : end position
 
     Parameters
     ----------
-    AnnData : AnnData object
-        AnnData object with var_names as region names.
+    anndata : anndata object
+        anndata object with var_names as region names.
     sep : tuple, optional
         Separator of region names. The default is ('_', '_').
 
     Returns
     -------
-    AnnData : AnnData object
-        AnnData object with region informations in var.
+    anndata : anndata object
+        anndata object with region informations in var.
     """
-    # Check if user wants to modify AnnData inplace or return a copy
+    # Check if user wants to modify anndata inplace or return a copy
     if inplace:
         pass
     else:
-        AnnData = AnnData.copy()
-    regions_list = AnnData.var_names
+        anndata = anndata.copy()
+    regions_list = anndata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
     regions_list = regions_list.str.replace(sep[1], sep[0])
@@ -71,17 +71,17 @@ def add_region_infos(AnnData, sep=("_", "_"), inplace=True):
     if set([len(i) for i in regions_list]) != set([3]):
         raise ValueError(
             """
-                         Not all regions have the same number of elements.
-                         Check if sep is correct, it should be ({}, {}),
-                         with only one occurence each in region names.
-                         """.format(
+            Not all regions have the same number of elements.
+            Check if sep is correct, it should be ({}, {}),
+            with only one occurence each in region names.
+            """.format(
                 sep[0], sep[1]
             )
         )
 
     # Extract region informations from var_names
     region_infos = pd.DataFrame(
-        regions_list, index=AnnData.var_names,
+        regions_list, index=anndata.var_names,
         columns=["chromosome", "start", "end"]
     )
 
@@ -90,28 +90,28 @@ def add_region_infos(AnnData, sep=("_", "_"), inplace=True):
     region_infos["end"] = region_infos["end"].astype(int)
 
     # Add region informations to var
-    AnnData.var["chromosome"] = region_infos["chromosome"]
-    AnnData.var["start"] = region_infos["start"]
-    AnnData.var["end"] = region_infos["end"]
+    anndata.var["chromosome"] = region_infos["chromosome"]
+    anndata.var["start"] = region_infos["start"]
+    anndata.var["end"] = region_infos["end"]
 
-    sort_regions(AnnData)
-    # Return AnnData if inplace is False
+    sort_regions(anndata)
+    # Return anndata if inplace is False
     if inplace:
         pass
     else:
-        return AnnData
+        return anndata
 
 
-def sort_regions(AnnData):
+def sort_regions(anndata):
     """
     Sort regions by chromosome and start position.
     """
-    AnnData.var.sort_values(["chromosome", "start"], inplace=True)
-    return AnnData
+    anndata.var.sort_values(["chromosome", "start"], inplace=True)
+    return anndata
 
 
 def compute_atac_network(
-    AnnData,
+    anndata,
     window_size=500000,
     unit_distance=1000,
     distance_constraint=250000,
@@ -120,11 +120,12 @@ def compute_atac_network(
     distance_parameter_convergence=1e-22,
     max_elements=200,
     n_samples=100,
-    n_samples_maxtry=500
+    n_samples_maxtry=500,
+    key="atac_network"
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
-    in the varp slot of the passed AnnData object.
+    in the varp slot of the passed anndata object.
     Scores are computed using 'sliding_graphical_lasso'.
 
     1. First, the function calculates the optimal penalty coefficient alpha.
@@ -144,8 +145,8 @@ def compute_atac_network(
 
     Parameters
     ----------
-    AnnData : AnnData object
-        AnnData object with var_names as region names.
+    anndata : anndata object
+        anndata object with var_names as region names.
     window_size : int, optional
         Size of sliding window, in which co-accessible regions can be found.
         The default is 500000.
@@ -173,15 +174,16 @@ def compute_atac_network(
     n_samples_maxtry : int, optional
         Maximum number of windows to try to calculate optimal penalty
         coefficient alpha. Should be higher than n_samples. The default is 500.
+    key : str, optional
+        Key to store the results in adata.varp. The default is "atac_network".
 
     Returns
     -------
     None.
-
     """
 
-    AnnData.varp['atac_network'] = sliding_graphical_lasso(
-        AnnData=AnnData,
+    anndata.varp[key] = sliding_graphical_lasso(
+        anndata=anndata,
         window_size=window_size,
         unit_distance=unit_distance,
         distance_constraint=distance_constraint,
@@ -195,7 +197,7 @@ def compute_atac_network(
 
 
 def extract_atac_links(
-    AnnData,
+    anndata,
     key=None,
     columns=['Peak1', 'Peak2', 'score']
 ):
@@ -206,8 +208,8 @@ def extract_atac_links(
 
     Parameters
     ----------
-    AnnData : AnnData object
-        AnnData object with var_names as variable names.
+    anndata : anndata object
+        anndata object with var_names as variable names.
     key : str, optional
         key from adata.varp. The default is None.
         If None, and only one key is found in adata.varp, will use this key.
@@ -224,28 +226,29 @@ def extract_atac_links(
 
     if key is None:  # if only one key (I guess often), no need to precise key
         # maybe replace by a default one later
-        if len(list(AnnData.varp)) == 1:
-            key = list(AnnData.varp)[0]
+        if len(list(anndata.varp)) == 1:
+            key = list(anndata.varp)[0]
         else:
             raise "Several keys were found in adata.varp: {}, ".format(
-                list(AnnData.varp))\
+                list(anndata.varp))\
                 + "please precise which keyword use (arg 'key'))"
     else:
-        if key not in list(AnnData.varp):
-            raise "The key you provided ({}) is not in adata.varp: {}".format(
-                key, list(AnnData.varp))
+        if key not in list(anndata.varp):
+            raise KeyError("The key you provided ({}) is not in adata.varp: {}"
+                           .format(key, list(anndata.varp))
+                           )
 
     links = pd.DataFrame(
         [(row, col, data) for (row, col, data) in zip(
-            [i for i in AnnData.varp[key].row],
-            [i for i in AnnData.varp[key].col],
-            AnnData.varp[key].data)
+            [i for i in anndata.varp[key].row],
+            [i for i in anndata.varp[key].col],
+            anndata.varp[key].data)
             if row < col],
         columns=columns
         ).sort_values(by=columns[2], ascending=False)
 
-    links[columns[0]] = [AnnData.var_names[i] for i in links[columns[0]]]
-    links[columns[1]] = [AnnData.var_names[i] for i in links[columns[1]]]
+    links[columns[0]] = [anndata.var_names[i] for i in links[columns[0]]]
+    links[columns[1]] = [anndata.var_names[i] for i in links[columns[1]]]
 
     return links
 
@@ -280,15 +283,15 @@ def calc_penalty(alpha, distance, unit_distance=1000):
     return penalties
 
 
-def get_distances_regions(AnnData):
+def get_distances_regions(anndata):
     """
-    Get distances between regions, var_names from an AnnData object.
+    Get distances between regions, var_names from an anndata object.
     'add_region_infos' should be run before this function.
 
     Parameters
     ----------
-    AnnData : AnnData object
-        AnnData object with var_names as region names.
+    anndata : anndata object
+        anndata object with var_names as region names.
 
     Returns
     -------
@@ -297,8 +300,8 @@ def get_distances_regions(AnnData):
     """
 
     # Store start and end positions in two arrays
-    m, n = np.meshgrid((AnnData.var["end"].values + AnnData.var["start"].values)/2,
-                       (AnnData.var["end"].values + AnnData.var["start"].values)/2)
+    m, n = np.meshgrid((anndata.var["end"].values + anndata.var["start"].values)/2,
+                       (anndata.var["end"].values + anndata.var["start"].values)/2)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -328,7 +331,7 @@ def local_alpha(
         )
     if sp.sparse.issparse(X):
         X = X.toarray()
-    
+
     # Check if distance_constraint is not too high
     if (distances > distance_constraint).sum() <= 1:
         return "No long edges"
@@ -401,7 +404,7 @@ def local_alpha(
 
 
 def average_alpha(
-    AnnData,
+    anndata,
     window_size=500000,
     unit_distance=1000,
     n_samples=100,
@@ -424,10 +427,10 @@ def average_alpha(
         slide_results["scores"] = np.array([])
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
-        for chromosome in AnnData.var["chromosome"].unique():
+        for chromosome in anndata.var["chromosome"].unique():
             if chromosomes_sizes is None:
-                chromosome_size = AnnData.var["end"][
-                    AnnData.var["chromosome"] == chromosome].max()
+                chromosome_size = anndata.var["end"][
+                    anndata.var["chromosome"] == chromosome].max()
             else:
                 try:
                     chromosome_size = chromosomes_sizes[chromosome]
@@ -435,8 +438,8 @@ def average_alpha(
                     print(
                         "{} not found as key in chromosome_size, using max end position".format(
                             chromosome))
-                    chromosome_size = AnnData.var["end"][
-                        AnnData.var["chromosome"] == chromosome].max()
+                    chromosome_size = anndata.var["end"][
+                        anndata.var["chromosome"] == chromosome].max()
             # Get start positions of windows
             window_starts = [
                 i
@@ -450,9 +453,9 @@ def average_alpha(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((AnnData.var["chromosome"] == chromosome)
-                     & (AnnData.var["start"] >= start)
-                     & (AnnData.var["start"] <= end)))[0]
+                    ((anndata.var["chromosome"] == chromosome)
+                     & (anndata.var["start"] >= start)
+                     & (anndata.var["start"] <= end)))[0]
 
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
@@ -469,11 +472,11 @@ def average_alpha(
     alpha_list = []
     for window in track(random_windows, description="Calculating alpha"):
         distances = get_distances_regions(
-            AnnData[:, window]
+            anndata[:, window]
             )
 
         alpha = local_alpha(
-            X=AnnData[:, window].X,
+            X=anndata[:, window].X,
             distances=distances,
             maxit=max_alpha_iteration,
             unit_distance=unit_distance,
@@ -512,7 +515,7 @@ def average_alpha(
 
 
 def sliding_graphical_lasso(
-    AnnData,
+    anndata,
     window_size: int = 500_000,
     unit_distance=1_000,
     distance_constraint=250_000,
@@ -531,8 +534,8 @@ def sliding_graphical_lasso(
 
     Parameters
     ----------
-    AnnData : AnnData object
-        AnnData object with var_names as region names.
+    anndata : anndata object
+        anndata object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
         The default is 500000.
@@ -564,7 +567,7 @@ def sliding_graphical_lasso(
 
     # print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
-        AnnData,
+        anndata,
         window_size=window_size,
         unit_distance=unit_distance,
         n_samples=n_samples,
@@ -579,7 +582,7 @@ def sliding_graphical_lasso(
     start_slidings = [0, int(window_size / 2)]
 
     results = {}
-    regions_list = AnnData.var_names
+    regions_list = anndata.var_names
     # Get global indices of regions
     map_indices = {regions_list[i]: i for i in range(len(regions_list))}
 
@@ -590,12 +593,12 @@ def sliding_graphical_lasso(
         slide_results["idy"] = np.array([])
         if k == 0:
             print("Starting to process chromosomes : {}".format(
-                AnnData.var["chromosome"].unique()))
+                anndata.var["chromosome"].unique()))
         else:
             print("Finishing to process chromosomes : {}".format(
-                AnnData.var["chromosome"].unique()))
+                anndata.var["chromosome"].unique()))
         for chromosome in track(
-            AnnData.var["chromosome"].unique(),
+            anndata.var["chromosome"].unique(),
             description="Calculating co-accessibility: {}/2".format(
                 1 if k == 0 else 2),):
             # Get start positions of windows
@@ -603,8 +606,8 @@ def sliding_graphical_lasso(
                 i
                 for i in range(
                     k,
-                    AnnData.var["end"][
-                        AnnData.var["chromosome"] == chromosome].max(),
+                    anndata.var["end"][
+                        anndata.var["chromosome"] == chromosome].max(),
                     window_size,
                 )
             ]
@@ -613,9 +616,9 @@ def sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((AnnData.var["chromosome"] == chromosome)
-                     & (AnnData.var["start"] >= start)
-                     & (AnnData.var["start"] <= end)))[0]
+                    ((anndata.var["chromosome"] == chromosome)
+                     & (anndata.var["start"] >= start)
+                     & (anndata.var["start"] <= end)))[0]
 
                 # already global ?
                 # Get global indices of regions in the window
@@ -626,19 +629,19 @@ def sliding_graphical_lasso(
                     continue
 
                 # Get submatrix
-                if sp.sparse.issparse(AnnData.X):
-                    window_accessibility = AnnData.X[:, idx].toarray()
+                if sp.sparse.issparse(anndata.X):
+                    window_accessibility = anndata.X[:, idx].toarray()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
 
                 else:
-                    window_accessibility = AnnData.X[:, idx].copy()
+                    window_accessibility = anndata.X[:, idx].copy()
                     window_scores = np.cov(window_accessibility, rowvar=False)
                     window_scores = window_scores + 1e-4 * np.eye(
                         len(window_scores))
 
-                distance = get_distances_regions(AnnData[:, idx])
+                distance = get_distances_regions(anndata[:, idx])
 
                 # Test if distance is negative
                 if np.any(distance < 0):
@@ -669,7 +672,7 @@ def sliding_graphical_lasso(
                 
 
                 # Names of regions in the window
-                window_region_names = AnnData.var_names[idx].copy()
+                window_region_names = anndata.var_names[idx].copy()
 
                 # Transform to correlation matrix
                 scores = cov_to_corr(graph_lasso_model.covariance_)
@@ -704,7 +707,7 @@ def sliding_graphical_lasso(
             results["window_" + str(k)] = sp.sparse.coo_matrix(
                 (slide_results["scores"],
                  (slide_results["idx"], slide_results["idy"])),
-                shape=(AnnData.X.shape[1], AnnData.X.shape[1]),
+                shape=(anndata.X.shape[1], anndata.X.shape[1]),
             )
     results = reconcile(results)
 
