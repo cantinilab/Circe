@@ -33,7 +33,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        pip install atacnet
+        pip install -I "git+https://github.com/r-trimbour/atacnet.git"
         python -c 'import sys; print(sys.path)'
         coverage run -m pytest --rootdir=./tests
     - name: Upload Coverage to Codecov
