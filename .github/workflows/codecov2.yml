@@ -13,7 +13,10 @@ jobs:
         with:
           python-version: '3.10'
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest pre-commit
+          pip install .[full]
       - name: Run ATS
         uses: codecov/codecov-ats@v0
         env:
