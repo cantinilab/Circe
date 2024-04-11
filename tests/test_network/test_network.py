@@ -15,8 +15,8 @@ import pandas as pd
 print(an)
 
 # Create fake single-cell atac-seq data
-nb_cells = 300
-nb_chr = 10
+nb_cells = 100
+nb_chr = 3
 nb_regions_per_chr = 200
 between_reg = 2000
 size_reg = 50
@@ -58,6 +58,48 @@ def test_network_atac():
         max_alpha_iteration=60
     )
 
+    # Test on different initilisation strategies
+    an.sliding_graphical_lasso(
+        atac,
+        window_size=distance_threshold,
+        unit_distance=1000,
+        distance_constraint=distance_threshold/2,
+        n_samples=5,
+        n_samples_maxtry=10,
+        max_alpha_iteration=10,
+        init_method="kendalltau"
+    )
+    an.sliding_graphical_lasso(
+        atac,
+        window_size=distance_threshold,
+        unit_distance=1000,
+        distance_constraint=distance_threshold/2,
+        n_samples=5,
+        n_samples_maxtry=10,
+        max_alpha_iteration=10,
+        init_method="spearman"
+    )
+    an.sliding_graphical_lasso(
+        atac,
+        window_size=distance_threshold,
+        unit_distance=1000,
+        distance_constraint=distance_threshold/2,
+        n_samples=5,
+        n_samples_maxtry=10,
+        max_alpha_iteration=10,
+        init_method="cov"
+    )
+    an.sliding_graphical_lasso(
+        atac,
+        window_size=distance_threshold,
+        unit_distance=1000,
+        distance_constraint=distance_threshold/2,
+        n_samples=5,
+        n_samples_maxtry=10,
+        max_alpha_iteration=10,
+        init_method="corrcoef"
+    )
+
     # Test on sparse matrix
     atac.X = sp.sparse.csr_matrix(atac.X)
     an.compute_atac_network(
@@ -71,7 +113,7 @@ def test_network_atac():
     )
 
     # Test calculate alpha if chromosome sizes is given
-    chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(0, 10)}
+    chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(0, nb_chr)}
     an.atacnet.average_alpha(
         atac,
         window_size=distance_threshold,

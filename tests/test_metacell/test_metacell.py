@@ -12,8 +12,8 @@ import pandas as pd
 import atacnet.metacells
 
 # Create fake single-cell atac-seq data
-nb_cells = 300
-nb_chr = 10
+nb_cells = 100
+nb_chr = 3
 nb_regions_per_chr = 200
 between_reg = 2000
 size_reg = 50
@@ -28,6 +28,6 @@ atac = ad.AnnData(pd.concat(counts, axis=1))  # Create AnnData object from the d
 distance_threshold = 50000
 
 
-def test_multicells():
+def test_metacells():
     # Add region annotations in AnnData.var dataframe
     atacnet.metacells.compute_metacells(atac)
