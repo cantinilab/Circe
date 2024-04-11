@@ -1,7 +1,10 @@
 import os
 os.chdir('tests/')
+print(os.getcwd())
 
 import atacnet as an
+print(atacnet.pyquic)
+
 import anndata as ad
 import numpy as np
 import pandas as pd
