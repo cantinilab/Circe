@@ -34,7 +34,7 @@ jobs:
     - name: Test with pytest
       run: |
         python -c 'import os; os.chdir("tests/"); import atacnet.pyquic; print(atacnet.pyquic)'
-        coverage run -m python -m pytest
+        coverage pytest
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
