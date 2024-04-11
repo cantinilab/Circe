@@ -1,5 +1,7 @@
 import os
 os.chdir('tests/')
+import atacnet.pyquic
+print(atacnet.pyquic)
 print(os.getcwd())
 
 import atacnet as an
