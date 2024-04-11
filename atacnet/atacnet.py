@@ -583,6 +583,7 @@ def sliding_graphical_lasso(
         distance_constraint=distance_constraint,
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
+        init_method=init_method,
     )
 
     start_slidings = [0, int(window_size / 2)]
