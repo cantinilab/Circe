@@ -3,7 +3,7 @@ os.chdir('tests/')
 print(os.getcwd())
 
 import atacnet as an
-print(atacnet.pyquic)
+print(an.pyquic)
 
 import anndata as ad
 import numpy as np
