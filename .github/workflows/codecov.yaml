@@ -34,7 +34,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install -I "git+https://github.com/r-trimbour/atacnet.git"
-        python -c 'import sys; print(sys.path)'
+        python -c 'import os; print(os.getcwd())'
         coverage run -m pytest --rootdir=./tests
     - name: Upload Coverage to Codecov
       uses: codecov/codecov-action@v2
