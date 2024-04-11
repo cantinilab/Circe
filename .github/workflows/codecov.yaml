@@ -35,7 +35,17 @@ jobs:
       run: |
         python -c 'import os; os.chdir("tests/"); import atacnet.pyquic; print(atacnet.pyquic)'
         pytest -s
-    - name: Upload Coverage to Codecov
-      uses: codecov/codecov-action@v2
+    - name: Run ATS
+      uses: codecov/codecov-ats@v0
+      env:
+        CODECOV_STATIC_TOKEN: ${{ secrets.CODECOV_STATIC_TOKEN }}
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    - name: Run tests and collect coverage
+      run: pytest --cov app ${{ env.CODECOV_ATS_TESTS }}
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        flags: smart-tests
+        verbose: true
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
