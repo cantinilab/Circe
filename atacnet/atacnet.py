@@ -416,6 +416,7 @@ def average_alpha(
     distance_parameter_convergence=1e-22,
     max_elements=200,
     chromosomes_sizes=None,
+    init_method="precomputed"
 ):
     """
     todo
@@ -485,6 +486,7 @@ def average_alpha(
             distance_constraint=distance_constraint,
             distance_parameter_convergence=distance_parameter_convergence,
             max_elements=max_elements,
+            init_method=init_method
         )
 
         if isinstance(alpha, int) or isinstance(alpha, float):
