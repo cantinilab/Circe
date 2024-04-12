@@ -17,7 +17,7 @@ print(an)
 # Create fake single-cell atac-seq data
 nb_cells = 100
 nb_chr = 3
-nb_regions_per_chr = 200
+nb_regions_per_chr = 100
 between_reg = 2000
 size_reg = 50
 
