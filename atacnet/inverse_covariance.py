@@ -11,6 +11,7 @@ from . import metrics
 from .rank_correlation import spearman_correlation, kendalltau_correlation
 
 from scipy.sparse import issparse
+import scipy as sp
 
 
 def _init_coefs(X, method="corrcoef"):
@@ -74,7 +75,7 @@ def _compute_error(comp_cov, covariance_, precision_, score_metric="frobenius"):
         return np.linalg.norm(np.triu(comp_cov - covariance_, 1), ord="fro")
     elif score_metric == "spectral":
         error = comp_cov - covariance_
-        return np.amax(np.linalg.svdvals(np.dot(error.T, error)))
+        return np.amax(sp.linalg.svdvals(np.dot(error.T, error)))
     elif score_metric == "kl":
         return metrics.kl_loss(comp_cov, precision_)
     elif score_metric == "quadratic":
