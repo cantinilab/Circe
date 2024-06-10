@@ -1,8 +1,9 @@
-# ATACnet
-<picture align="center">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg">
-  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg">
-</picture>
+<p align="center">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" align="center">
+  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" align="center">
+</p>
+
+-----------------
 
 [![Unit_Tests](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml/badge.svg)](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml)
 [![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
