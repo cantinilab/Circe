@@ -7,7 +7,7 @@
 [![Unit_Tests](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml/badge.svg)](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml)
 [![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
 
-[![PyPI version](https://img.shields.io/pypi/v/hummuspy?color=blue)](https://img.shields.io/pypi/v/hummuspy)
+[![PyPI version](https://img.shields.io/pypi/v/atacnet?color=blue)](https://img.shields.io/pypi/v/atacnet)
 [![Downloads](https://static.pepy.tech/badge/atacnet/month)](https://pepy.tech/project/atacnet)
 
 
