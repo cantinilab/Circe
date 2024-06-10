@@ -1,6 +1,9 @@
 <p align="center">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" align="center" width="600"/>
-  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" align="center" width="600">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" width="600">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" width="600">
+    <img alt="Circe logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" width="600">
+  </picture>
 </p>
 
 -----------------
