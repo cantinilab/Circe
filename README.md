@@ -1,6 +1,14 @@
 # ATACnet
+<picture align="center">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg">
+  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg">
+</picture>
+
+[![Unit_Tests](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml/badge.svg)](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml)
 [![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
-[![PyPI version](https://img.shields.io/pypi/v/hummuspy?color=pink)](https://img.shields.io/pypi/v/hummuspy?color=pink)
+
+[![PyPI version](https://img.shields.io/pypi/v/hummuspy?color=blue)](https://img.shields.io/pypi/v/hummuspy)
+[![Downloads](https://static.pepy.tech/badge/atacnet/month)](https://pepy.tech/project/atacnet)
 
 
 ## Description
