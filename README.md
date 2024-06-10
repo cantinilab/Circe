@@ -1,13 +1,12 @@
 <p align="center">
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" align="center">
-  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" align="center">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" align="center" width="600"/>
+  <img alt="Circe Logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" align="center" width="600">
 </p>
 
 -----------------
-
+# CIRCE: Cis-regulatory interactions between chromatin regions
 [![Unit_Tests](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml/badge.svg)](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml)
 [![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
-
 [![PyPI version](https://img.shields.io/pypi/v/atacnet?color=blue)](https://img.shields.io/pypi/v/atacnet)
 [![Downloads](https://static.pepy.tech/badge/atacnet/month)](https://pepy.tech/project/atacnet)
 
