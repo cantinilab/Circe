@@ -2,7 +2,6 @@ name: Tests and code coverage
 on: [push, pull_request]
 jobs:
   run:
-    using: 'node20'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
