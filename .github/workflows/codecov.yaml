@@ -24,7 +24,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Run tests and collect coverage
         run: |
-          pip install -e .
+          #pip install -e .
           pip install pytest-cov
           python -c 'import os; os.chdir("tests/"); import atacnet.pyquic; print(atacnet.pyquic)'
           pytest -s --cov "atacnet"
