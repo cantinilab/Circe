@@ -107,9 +107,7 @@ def sort_regions(anndata):
     Sort regions by chromosome and start position.
     """
     ord_index = anndata.var.sort_values(["chromosome", "start"]).index
-    anndata = anndata[:, ord_index]
-
-    return anndata
+    return anndata[:, ord_index]
 
 
 def compute_atac_network(
