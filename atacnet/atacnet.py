@@ -121,7 +121,8 @@ def compute_atac_network(
     max_elements=200,
     n_samples=100,
     n_samples_maxtry=500,
-    key="atac_network"
+    key="atac_network",
+    seed=42
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -192,7 +193,8 @@ def compute_atac_network(
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
         n_samples=n_samples,
-        n_samples_maxtry=n_samples_maxtry
+        n_samples_maxtry=n_samples_maxtry,
+        seed=seed
     )
 
 
@@ -416,7 +418,8 @@ def average_alpha(
     distance_parameter_convergence=1e-22,
     max_elements=200,
     chromosomes_sizes=None,
-    init_method="precomputed"
+    init_method="precomputed",
+    seed=42
 ):
     """
     todo
@@ -455,9 +458,15 @@ def average_alpha(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((anndata.var["chromosome"] == chromosome)
-                     & (anndata.var["start"] >= start)
-                     & (anndata.var["start"] <= end)))[0]
+                    (anndata.var["chromosome"] == chromosome)
+                    & (
+                        ((anndata.var["start"] > start)
+                         & (anndata.var["start"] < end-1))
+                        |
+                        ((anndata.var["end"] > start)
+                         & (anndata.var["end"] < end-1))
+                      )
+                    )[0]
 
                 if 0 < len(idx) < 200:
                     idx_list.append(idx)
@@ -465,10 +474,12 @@ def average_alpha(
     if len(idx_list) < n_samples_maxtry:
         random_windows = idx_list
     else:
-        idx_list_indices = np.random.choice(
+        rng = np.random.default_rng(seed=seed)
+        idx_list_indices = rng.choice(
             len(idx_list),
             n_samples_maxtry,
-            replace=True)
+            replace=False,
+        )
         random_windows = [idx_list[i] for i in idx_list_indices]
 
     alpha_list = []
@@ -529,6 +540,7 @@ def sliding_graphical_lasso(
     n_samples=100,
     n_samples_maxtry=500,
     init_method="precomputed",
+    seed=42
 ):
     """
     Extract sliding submatrix from a sparse correlation matrix.
@@ -586,11 +598,15 @@ def sliding_graphical_lasso(
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
         init_method=init_method,
+        seed=seed
     )
+    print("Alpha coefficient calculated : {}".format(alpha))
 
     start_slidings = [0, int(window_size / 2)]
 
     results = {}
+    idx_ = {}
+    idy_ = {}
     regions_list = anndata.var_names
     # Get global indices of regions
     map_indices = {regions_list[i]: i for i in range(len(regions_list))}
@@ -600,6 +616,8 @@ def sliding_graphical_lasso(
         slide_results["scores"] = np.array([])
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
+        idx_["window_" + str(k)] = np.array([])
+        idy_["window_" + str(k)] = np.array([])
         if k == 0:
             print("Starting to process chromosomes : {}".format(
                 anndata.var["chromosome"].unique()))
@@ -625,9 +643,23 @@ def sliding_graphical_lasso(
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    ((anndata.var["chromosome"] == chromosome)
-                     & (anndata.var["start"] >= start)
-                     & (anndata.var["start"] <= end)))[0]
+                    (anndata.var["chromosome"] == chromosome)
+                    & (
+                        ((anndata.var["start"] > start)
+                         & (anndata.var["start"] < end-1))
+                        |
+                        ((anndata.var["end"] > start)
+                         & (anndata.var["end"] < end-1))
+                      )
+                    )[0]
+
+                # Add to the list of all regions used to know how many
+                # times each region is used
+                x_, y_ = \
+                    np.meshgrid(idx, idx)
+                idx_["window_" + str(k)], idy_["window_" + str(k)] = \
+                    np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
+                    np.concatenate([idy_["window_" + str(k)], y_.flatten()])
 
                 # already global ?
                 # Get global indices of regions in the window
@@ -678,7 +710,6 @@ def sliding_graphical_lasso(
 
                 # Fit graphical lasso
                 graph_lasso_model.fit(window_scores)
-                
 
                 # Names of regions in the window
                 window_region_names = anndata.var_names[idx].copy()
@@ -718,40 +749,65 @@ def sliding_graphical_lasso(
                  (slide_results["idx"], slide_results["idy"])),
                 shape=(anndata.X.shape[1], anndata.X.shape[1]),
             )
-    results = reconcile(results)
+
+    print(len(idx_["window_0"]), len(idy_["window_0"]))
+    results = reconcile(results, idx_, idy_)
 
     print("Done !")
     return results
 
 
 def reconcile(
-    results_gl
+    results_gl,
+    idx_gl,
+    idy_gl
 ):
 
     results_keys = list(results_gl.keys())
     print("Averaging co-accessibility scores across windows...")
 
-    # Sum of values per non-null locations
+    #################
+    ### To keep entries contained in 2 windows
+
+    # sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
 
-    # remove all values where there is no sign agreement between windows
-    signs_aggreeing = reduce(
-        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y < 0)),
-        [results_gl[k] for k in results_keys])
-    signs_aggreeing += reduce(
-        lambda x, y: sp.sparse.csr_matrix.multiply((x > 0), (y > 0)),
-        [results_gl[k] for k in results_keys])
-    
-    average = sp.sparse.csr_matrix.multiply(average, signs_aggreeing)
+    # Initiate divider depending on number of overlapping windows
+    print(len(idx_gl[results_keys[0]]), len(idy_gl[results_keys[0]]))
+    divider = sp.sparse.csr_matrix(
+        ([1 for i in range(len(idx_gl[results_keys[0]]))],
+         (idx_gl[results_keys[0]].astype(int),
+          idy_gl[results_keys[0]].astype(int)))
+    )
+    for k in results_keys[1:]:
+        divider = divider + sp.sparse.csr_matrix(
+            ([1 for i in range(len(idx_gl[k]))],
+             (idx_gl[k].astype(int),
+              idy_gl[k].astype(int)))
+        )
 
-    # Number of non-null values per locations
-    divider = reduce(lambda x, y: x+y,
-                     [results_gl[k].astype(bool).astype(int)
-                      for k in results_keys])
-    divider = sp.sparse.csr_matrix.multiply(divider, signs_aggreeing)
+    # extract all values where there is no sign agreement between windows
+    signs_disaggreeing = reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x > 0), (y < 0)),
+        [results_gl[k] for k in results_keys])
+    signs_disaggreeing += reduce(
+        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y > 0)),
+        [results_gl[k] for k in results_keys])
 
-    # divide sum by number of non-null values, only for actual non-null values
+    # Remove disagreeing values from average
+    average = average - sp.sparse.csr_matrix.multiply(
+        average, signs_disaggreeing)
+    # Remove also disagreeing values from divider
+    print(divider.sum())
+    divider = sp.sparse.csr_matrix.multiply(divider, average.astype(bool).astype(int))
+    print(divider.sum())
+
+    # Delete the sign_disagreeing matrix
+    del signs_disaggreeing
+
+    # Divide the sum by number of values
+    print(average.data)
     average.data = average.data/divider.data
-
+    print(average.data)
     return sp.sparse.coo_matrix(average)
