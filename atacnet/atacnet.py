@@ -94,7 +94,7 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=True):
     anndata.var["start"] = region_infos["start"]
     anndata.var["end"] = region_infos["end"]
 
-    sort_regions(anndata)
+    anndata = sort_regions(anndata)
     # Return anndata if inplace is False
     if inplace:
         pass
@@ -106,8 +106,8 @@ def sort_regions(anndata):
     """
     Sort regions by chromosome and start position.
     """
-    anndata.var.sort_values(["chromosome", "start"], inplace=True)
-    return anndata
+    ord_index = anndata.var.sort_values(["chromosome", "start"]).index
+    return anndata[:, ord_index]
 
 
 def compute_atac_network(
