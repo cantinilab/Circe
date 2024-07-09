@@ -21,7 +21,7 @@ jobs:
         run: |
           pip install pytest-cov
           python -c 'import os; os.chdir("tests/"); import circe.pyquic; print(circe.pyquic)'
-          pytest -s --cov "circe"
+          pytest -s --cov "circe/tests"
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
