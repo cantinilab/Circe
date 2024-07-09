@@ -385,7 +385,6 @@ def local_alpha(
         # If new_distance_parameter is equal to starting_max,
         # double starting_max
         if new_distance_parameter == starting_max:
-            print('start with a higher starting_max')
             new_distance_parameter = 2 * starting_max
             starting_max = new_distance_parameter
             distance_parameter_max = starting_max
@@ -584,6 +583,14 @@ def sliding_graphical_lasso(
         SHOULD BE CHANGED CAREFULLY.
     """
 
+    # AnnData object should have more than 1 cell
+    if anndata.X.shape[0] < 2 or anndata.X.shape[1] < 2:
+        raise ValueError(
+            """
+            Not enough cells/regions in the AnnData object.
+            You need at least 2 cells and 2 regions to calculate co-accessibility.
+            """
+        )
     # print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
         anndata,
