@@ -1,13 +1,12 @@
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
-
 import numpy as np
 import pandas as pd
 from rich.progress import track
 import scipy as sp
 from . import quic_graph_lasso
 from functools import reduce
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
+warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
 
 
 def cov_to_corr(cov_matrix, tol=1e-20):

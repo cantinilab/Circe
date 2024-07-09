@@ -197,37 +197,6 @@ class InverseCovarianceEstimator(BaseEstimator):
         if not self.auto_scale:
             self.lam_scale_ = 1.0
 
-    def score(self, X_test, y=None):
-        """Computes the score between cov/prec of sample covariance of X_test
-        and X via 'score_metric'.
-
-        Note: We want to maximize score so we return the negative error.
-
-        Parameters
-        ----------
-        X_test : array-like, shape = [n_samples, n_features]
-            Test data of which we compute the likelihood, where n_samples is
-            the number of samples and n_features is the number of features.
-            X_test is assumed to be drawn from the same distribution than
-            the data used in fit (including centering).
-
-        y : not used.
-
-        Returns
-        -------
-        result : float or list of floats
-            The negative of the min error between `self.covariance_` and
-            the sample covariance of X_test.
-        """
-        if isinstance(self.precision_, list):
-            print("Warning: returning a list of scores.")
-
-        S_test, lam_scale_test = _init_coefs(X_test, method=self.init_method)
-        error = self.cov_error(S_test, score_metric=self.score_metric)
-
-        # maximize score with -error
-        return -error
-
     def cov_error(self, comp_cov, score_metric="frobenius"):
         """Computes the covariance error vs. comp_cov.
 

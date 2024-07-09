@@ -9,7 +9,7 @@
             "/tmp/pip-build-env-b_d1i7qj/overlay/lib/python3.11/site-packages/numpy/core/include/numpy/ndarrayobject.h",
             "/tmp/pip-build-env-b_d1i7qj/overlay/lib/python3.11/site-packages/numpy/core/include/numpy/ndarraytypes.h",
             "/tmp/pip-build-env-b_d1i7qj/overlay/lib/python3.11/site-packages/numpy/core/include/numpy/ufuncobject.h",
-            "atacnet/pyquic/QUIC.h"
+            "circe/pyquic/QUIC.h"
         ],
         "extra_compile_args": [
             "-msse2",
@@ -21,15 +21,15 @@
             "-llapack"
         ],
         "include_dirs": [
-            "atacnet/pyquic",
+            "circe/pyquic",
             "/tmp/pip-build-env-b_d1i7qj/overlay/lib/python3.11/site-packages/numpy/core/include",
             "/usr/local/include"
         ],
         "language": "c++",
         "name": "atac.pyquic",
         "sources": [
-            "atacnet/pyquic/pyquic.pyx",
-            "atacnet/pyquic/QUIC.C"
+            "circe/pyquic/pyquic.pyx",
+            "circe/pyquic/QUIC.C"
         ]
     },
     "module_name": "atac.pyquic"
@@ -1532,7 +1532,7 @@ static const char *__pyx_filename;
 
 static const char *__pyx_f[] = {
   "__init__.cython-30.pxd",
-  "atacnet/pyquic/pyquic.pyx",
+  "circe/pyquic/pyquic.pyx",
   "type.pxd",
 };
 /* #### Code section: utility_code_proto_before_types ### */
@@ -2581,7 +2581,7 @@ static const char __pyx_k_initializing[] = "_initializing";
 static const char __pyx_k_is_coroutine[] = "_is_coroutine";
 static const char __pyx_k_asyncio_coroutines[] = "asyncio.coroutines";
 static const char __pyx_k_cline_in_traceback[] = "cline_in_traceback";
-static const char __pyx_k_atacnet_pyquic_pyquic_pyx[] = "atacnet/pyquic/pyquic.pyx";
+static const char __pyx_k_circe_pyquic_pyquic_pyx[] = "circe/pyquic/pyquic.pyx";
 static const char __pyx_k_numpy_core_multiarray_failed_to[] = "numpy.core.multiarray failed to import";
 static const char __pyx_k_numpy_core_umath_failed_to_impor[] = "numpy.core.umath failed to import";
 /* #### Code section: decls ### */
@@ -2660,7 +2660,7 @@ typedef struct {
   PyObject *__pyx_n_s__6;
   PyObject *__pyx_n_s_asyncio_coroutines;
   PyObject *__pyx_n_s_atac_pyquic;
-  PyObject *__pyx_kp_s_atacnet_pyquic_pyquic_pyx;
+  PyObject *__pyx_kp_s_circe_pyquic_pyquic_pyx;
   PyObject *__pyx_n_s_cline_in_traceback;
   PyObject *__pyx_n_s_cputime;
   PyObject *__pyx_n_s_dGap;
@@ -2761,7 +2761,7 @@ static int __pyx_m_clear(PyObject *m) {
   Py_CLEAR(clear_module_state->__pyx_n_s__6);
   Py_CLEAR(clear_module_state->__pyx_n_s_asyncio_coroutines);
   Py_CLEAR(clear_module_state->__pyx_n_s_atac_pyquic);
-  Py_CLEAR(clear_module_state->__pyx_kp_s_atacnet_pyquic_pyquic_pyx);
+  Py_CLEAR(clear_module_state->__pyx_kp_s_circe_pyquic_pyquic_pyx);
   Py_CLEAR(clear_module_state->__pyx_n_s_cline_in_traceback);
   Py_CLEAR(clear_module_state->__pyx_n_s_cputime);
   Py_CLEAR(clear_module_state->__pyx_n_s_dGap);
@@ -2840,7 +2840,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
   Py_VISIT(traverse_module_state->__pyx_n_s__6);
   Py_VISIT(traverse_module_state->__pyx_n_s_asyncio_coroutines);
   Py_VISIT(traverse_module_state->__pyx_n_s_atac_pyquic);
-  Py_VISIT(traverse_module_state->__pyx_kp_s_atacnet_pyquic_pyquic_pyx);
+  Py_VISIT(traverse_module_state->__pyx_kp_s_circe_pyquic_pyquic_pyx);
   Py_VISIT(traverse_module_state->__pyx_n_s_cline_in_traceback);
   Py_VISIT(traverse_module_state->__pyx_n_s_cputime);
   Py_VISIT(traverse_module_state->__pyx_n_s_dGap);
@@ -2949,7 +2949,7 @@ static int __pyx_m_traverse(PyObject *m, visitproc visit, void *arg) {
 #define __pyx_n_s__6 __pyx_mstate_global->__pyx_n_s__6
 #define __pyx_n_s_asyncio_coroutines __pyx_mstate_global->__pyx_n_s_asyncio_coroutines
 #define __pyx_n_s_atac_pyquic __pyx_mstate_global->__pyx_n_s_atac_pyquic
-#define __pyx_kp_s_atacnet_pyquic_pyquic_pyx __pyx_mstate_global->__pyx_kp_s_atacnet_pyquic_pyquic_pyx
+#define __pyx_kp_s_circe_pyquic_pyquic_pyx __pyx_mstate_global->__pyx_kp_s_circe_pyquic_pyquic_pyx
 #define __pyx_n_s_cline_in_traceback __pyx_mstate_global->__pyx_n_s_cline_in_traceback
 #define __pyx_n_s_cputime __pyx_mstate_global->__pyx_n_s_cputime
 #define __pyx_n_s_dGap __pyx_mstate_global->__pyx_n_s_dGap
@@ -4247,7 +4247,7 @@ static CYTHON_INLINE NPY_DATETIMEUNIT __pyx_f_5numpy_get_datetime64_unit(PyObjec
   return __pyx_r;
 }
 
-/* "atacnet/pyquic/pyquic.pyx":12
+/* "circe/pyquic/pyquic.pyx":12
  * 	  uint32_t* iter, double* dGap)
  * 
  * def quic(char* mode, int p,             # <<<<<<<<<<<<<<
@@ -4701,7 +4701,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
   }
   __pyx_pybuffernd_dGap.diminfo[0].strides = __pyx_pybuffernd_dGap.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_dGap.diminfo[0].shape = __pyx_pybuffernd_dGap.rcbuffer->pybuffer.shape[0];
 
-  /* "atacnet/pyquic/pyquic.pyx":27
+  /* "circe/pyquic/pyquic.pyx":27
  *     """
  *     """
  *     cdef uint32_t _p = p             # <<<<<<<<<<<<<<
@@ -4710,7 +4710,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
  */
   __pyx_v__p = __pyx_v_p;
 
-  /* "atacnet/pyquic/pyquic.pyx":28
+  /* "circe/pyquic/pyquic.pyx":28
  *     """
  *     cdef uint32_t _p = p
  *     cdef uint32_t _pathLen = pathLen             # <<<<<<<<<<<<<<
@@ -4719,7 +4719,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
  */
   __pyx_v__pathLen = __pyx_v_pathLen;
 
-  /* "atacnet/pyquic/pyquic.pyx":29
+  /* "circe/pyquic/pyquic.pyx":29
  *     cdef uint32_t _p = p
  *     cdef uint32_t _pathLen = pathLen
  *     cdef int32_t _msg = msg             # <<<<<<<<<<<<<<
@@ -4728,7 +4728,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
  */
   __pyx_v__msg = __pyx_v_msg;
 
-  /* "atacnet/pyquic/pyquic.pyx":30
+  /* "circe/pyquic/pyquic.pyx":30
  *     cdef uint32_t _pathLen = pathLen
  *     cdef int32_t _msg = msg
  *     cdef uint32_t _max_iter = max_iter             # <<<<<<<<<<<<<<
@@ -4737,7 +4737,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
  */
   __pyx_v__max_iter = __pyx_v_max_iter;
 
-  /* "atacnet/pyquic/pyquic.pyx":31
+  /* "circe/pyquic/pyquic.pyx":31
  *     cdef int32_t _msg = msg
  *     cdef uint32_t _max_iter = max_iter
  *     cdef uint32_t* _iter = <uint32_t*> iter.data             # <<<<<<<<<<<<<<
@@ -4747,7 +4747,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
   __pyx_t_1 = __pyx_f_5numpy_7ndarray_4data_data(((PyArrayObject *)__pyx_v_iter)); if (unlikely(__pyx_t_1 == ((char *)NULL) && PyErr_Occurred())) __PYX_ERR(1, 31, __pyx_L1_error)
   __pyx_v__iter = ((uint32_t *)__pyx_t_1);
 
-  /* "atacnet/pyquic/pyquic.pyx":32
+  /* "circe/pyquic/pyquic.pyx":32
  *     cdef uint32_t _max_iter = max_iter
  *     cdef uint32_t* _iter = <uint32_t*> iter.data
  *     QUIC(mode[0], _p, &S[0,0], &L[0,0], _pathLen, &path[0], tol, _msg, _max_iter,             # <<<<<<<<<<<<<<
@@ -4795,7 +4795,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
     __PYX_ERR(1, 32, __pyx_L1_error)
   }
 
-  /* "atacnet/pyquic/pyquic.pyx":33
+  /* "circe/pyquic/pyquic.pyx":33
  *     cdef uint32_t* _iter = <uint32_t*> iter.data
  *     QUIC(mode[0], _p, &S[0,0], &L[0,0], _pathLen, &path[0], tol, _msg, _max_iter,
  *             &X[0,0], &W[0,0], &opt[0], &cputime[0], &_iter[0], &dGap[0])             # <<<<<<<<<<<<<<
@@ -4863,7 +4863,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
     __PYX_ERR(1, 33, __pyx_L1_error)
   }
 
-  /* "atacnet/pyquic/pyquic.pyx":32
+  /* "circe/pyquic/pyquic.pyx":32
  *     cdef uint32_t _max_iter = max_iter
  *     cdef uint32_t* _iter = <uint32_t*> iter.data
  *     QUIC(mode[0], _p, &S[0,0], &L[0,0], _pathLen, &path[0], tol, _msg, _max_iter,             # <<<<<<<<<<<<<<
@@ -4872,7 +4872,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
  */
   QUIC((__pyx_v_mode[0]), __pyx_v__p, (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_S.rcbuffer->pybuffer.buf, __pyx_t_2, __pyx_pybuffernd_S.diminfo[0].strides, __pyx_t_3, __pyx_pybuffernd_S.diminfo[1].strides))), (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_L.rcbuffer->pybuffer.buf, __pyx_t_5, __pyx_pybuffernd_L.diminfo[0].strides, __pyx_t_6, __pyx_pybuffernd_L.diminfo[1].strides))), __pyx_v__pathLen, (&(*__Pyx_BufPtrCContig1d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_path.rcbuffer->pybuffer.buf, __pyx_t_7, __pyx_pybuffernd_path.diminfo[0].strides))), __pyx_v_tol, __pyx_v__msg, __pyx_v__max_iter, (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_X.rcbuffer->pybuffer.buf, __pyx_t_8, __pyx_pybuffernd_X.diminfo[0].strides, __pyx_t_9, __pyx_pybuffernd_X.diminfo[1].strides))), (&(*__Pyx_BufPtrCContig2d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_W.rcbuffer->pybuffer.buf, __pyx_t_10, __pyx_pybuffernd_W.diminfo[0].strides, __pyx_t_11, __pyx_pybuffernd_W.diminfo[1].strides))), (&(*__Pyx_BufPtrCContig1d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_opt.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_opt.diminfo[0].strides))), (&(*__Pyx_BufPtrCContig1d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_cputime.rcbuffer->pybuffer.buf, __pyx_t_13, __pyx_pybuffernd_cputime.diminfo[0].strides))), (&(__pyx_v__iter[0])), (&(*__Pyx_BufPtrCContig1d(__pyx_t_5numpy_float64_t *, __pyx_pybuffernd_dGap.rcbuffer->pybuffer.buf, __pyx_t_14, __pyx_pybuffernd_dGap.diminfo[0].strides))));
 
-  /* "atacnet/pyquic/pyquic.pyx":35
+  /* "circe/pyquic/pyquic.pyx":35
  *             &X[0,0], &W[0,0], &opt[0], &cputime[0], &_iter[0], &dGap[0])
  * 
  *     return             # <<<<<<<<<<<<<<
@@ -4881,7 +4881,7 @@ static PyObject *__pyx_pf_4atac_6pyquic_quic(CYTHON_UNUSED PyObject *__pyx_self,
   __pyx_r = Py_None; __Pyx_INCREF(Py_None);
   goto __pyx_L0;
 
-  /* "atacnet/pyquic/pyquic.pyx":12
+  /* "circe/pyquic/pyquic.pyx":12
  * 	  uint32_t* iter, double* dGap)
  * 
  * def quic(char* mode, int p,             # <<<<<<<<<<<<<<
@@ -4949,7 +4949,7 @@ static int __Pyx_CreateStringTabAndInitStrings(void) {
     {&__pyx_n_s__6, __pyx_k__6, sizeof(__pyx_k__6), 0, 0, 1, 1},
     {&__pyx_n_s_asyncio_coroutines, __pyx_k_asyncio_coroutines, sizeof(__pyx_k_asyncio_coroutines), 0, 0, 1, 1},
     {&__pyx_n_s_atac_pyquic, __pyx_k_atac_pyquic, sizeof(__pyx_k_atac_pyquic), 0, 0, 1, 1},
-    {&__pyx_kp_s_atacnet_pyquic_pyquic_pyx, __pyx_k_atacnet_pyquic_pyquic_pyx, sizeof(__pyx_k_atacnet_pyquic_pyquic_pyx), 0, 0, 1, 0},
+    {&__pyx_kp_s_circe_pyquic_pyquic_pyx, __pyx_k_circe_pyquic_pyquic_pyx, sizeof(__pyx_k_circe_pyquic_pyquic_pyx), 0, 0, 1, 0},
     {&__pyx_n_s_cline_in_traceback, __pyx_k_cline_in_traceback, sizeof(__pyx_k_cline_in_traceback), 0, 0, 1, 1},
     {&__pyx_n_s_cputime, __pyx_k_cputime, sizeof(__pyx_k_cputime), 0, 0, 1, 1},
     {&__pyx_n_s_dGap, __pyx_k_dGap, sizeof(__pyx_k_dGap), 0, 0, 1, 1},
@@ -5018,7 +5018,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "atacnet/pyquic/pyquic.pyx":12
+  /* "circe/pyquic/pyquic.pyx":12
  * 	  uint32_t* iter, double* dGap)
  * 
  * def quic(char* mode, int p,             # <<<<<<<<<<<<<<
@@ -5028,7 +5028,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__4 = PyTuple_Pack(20, __pyx_n_s_mode, __pyx_n_s_p, __pyx_n_s_S, __pyx_n_s_L, __pyx_n_s_pathLen, __pyx_n_s_path, __pyx_n_s_tol, __pyx_n_s_msg, __pyx_n_s_max_iter, __pyx_n_s_X, __pyx_n_s_W, __pyx_n_s_opt, __pyx_n_s_cputime, __pyx_n_s_iter, __pyx_n_s_dGap, __pyx_n_s_p_2, __pyx_n_s_pathLen_2, __pyx_n_s_msg_2, __pyx_n_s_max_iter_2, __pyx_n_s_iter_2); if (unlikely(!__pyx_tuple__4)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__4);
   __Pyx_GIVEREF(__pyx_tuple__4);
-  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(15, 0, 0, 20, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_atacnet_pyquic_pyquic_pyx, __pyx_n_s_quic, 12, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) __PYX_ERR(1, 12, __pyx_L1_error)
+  __pyx_codeobj__5 = (PyObject*)__Pyx_PyCode_New(15, 0, 0, 20, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__4, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_circe_pyquic_pyquic_pyx, __pyx_n_s_quic, 12, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__5)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -5451,7 +5451,7 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   #endif
 
-  /* "atacnet/pyquic/pyquic.pyx":1
+  /* "circe/pyquic/pyquic.pyx":1
  * import numpy as np             # <<<<<<<<<<<<<<
  * cimport numpy as np
  * from libc.stdint cimport uint32_t, int32_t
@@ -5461,7 +5461,7 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_2) < 0) __PYX_ERR(1, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "atacnet/pyquic/pyquic.pyx":12
+  /* "circe/pyquic/pyquic.pyx":12
  * 	  uint32_t* iter, double* dGap)
  * 
  * def quic(char* mode, int p,             # <<<<<<<<<<<<<<
@@ -5473,7 +5473,7 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_quic, __pyx_t_2) < 0) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "atacnet/pyquic/pyquic.pyx":1
+  /* "circe/pyquic/pyquic.pyx":1
  * import numpy as np             # <<<<<<<<<<<<<<
  * cimport numpy as np
  * from libc.stdint cimport uint32_t, int32_t

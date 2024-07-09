@@ -1,15 +1,15 @@
 import os
-import atacnet.pyquic
-print(atacnet.pyquic)
+import circe.pyquic
+print(circe.pyquic)
 print(os.getcwd())
 
-import atacnet as an
-print(an.pyquic)
+import circe as ci
+print(ci.pyquic)
 
 import anndata as ad
 import numpy as np
 import pandas as pd
-import atacnet.metacells
+import circe.metacells
 
 # Create fake single-cell atac-seq data
 nb_cells = 100
@@ -30,4 +30,4 @@ distance_threshold = 50000
 
 def test_metacells():
     # Add region annotations in AnnData.var dataframe
-    atacnet.metacells.compute_metacells(atac)
+    circe.metacells.compute_metacells(atac)

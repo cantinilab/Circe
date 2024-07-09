@@ -1,17 +1,17 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo_dark_theme.svg" width="600">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" width="600">
-    <img alt="Circe logo" src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/logo.svg" width="600">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cantinilab/circe/main/logo_dark_theme.svg" width="600">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/cantinilab/circe/main/logo.svg" width="600">
+    <img alt="Circe logo" src="https://raw.githubusercontent.com/cantinilab/circe/main/logo.svg" width="600">
   </picture>
 </p>
 
 -----------------
 # CIRCE: Cis-regulatory interactions between chromatin regions
-[![Unit_Tests](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml/badge.svg)](https://github.com/r-trimbour/atacnet/actions/workflows/codecov.yaml)
-[![codecov](https://codecov.io/gh/r-trimbour/atacnet/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/r-trimbour/atacnet)
-[![PyPI version](https://img.shields.io/pypi/v/atacnet?color=blue)](https://img.shields.io/pypi/v/atacnet)
-[![Downloads](https://static.pepy.tech/badge/atacnet/month)](https://pepy.tech/project/atacnet)
+[![Unit_Tests](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml/badge.svg)](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml)
+[![codecov](https://codecov.io/gh/cantinilab/circe/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/cantinilab/circe)
+[![PyPI version](https://img.shields.io/pypi/v/circe?color=blue)](https://img.shields.io/pypi/v/circe)
+[![Downloads](https://static.pepy.tech/badge/circe/month)](https://pepy.tech/project/circe)
 
 
 ## Description
@@ -29,18 +29,18 @@ _If you have any suggestion, don't hesitate ! This package is still a work in pr
 The package can be installed using pip:
 
 ```
-pip install atacnet
+pip install circe
 ```
 
  and from github
 ```
-pip install "git+https://github.com/r-trimbour/atacnet.git"
+pip install "git+https://github.com/cantinilab/circe.git"
 ```
 
 ## Minimal example
 ```
 import anndata as ad
-import atacnet as an
+import circe as an
 
 atac = ad.read_h5ad('atac_data.h5ad')
 an.add_region_infos(atac)
@@ -51,22 +51,22 @@ an.extract_atac_links(atac)
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
 
-All tests can be found in the [AtacNet benchmark repo](https://github.com/r-trimbour/atacnet_benchmark)
+All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/circe_benchmark)
 
 ### Toy dataset 1 (fake data): 
 - Pearson correlation coefficient: 0.999126
 - Spearman correlation coefficient: 0.99838
-<img src="https://raw.githubusercontent.com/r-trimbour/atacnet/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
+<img src="https://raw.githubusercontent.com/cantinilab/circe/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
 
 ### Real dataset 2 (subsample of neurips PBMC)
 - Pearson correlation coefficient: 0.999958
 - Spearman correlation coefficient: 0.999911
-<img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
+<img src="https://github.com/cantinilab/circe/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
 
 Performance on real dataset 2:
 - Runtime: ~100x faster
 - Memory usage: ~5x less
-<img src="https://github.com/r-trimbour/atacnet/raw/main/Figures/perf_real_dataset2.png" align="center" width="480"/>
+<img src="https://github.com/cantinilab/circe/raw/main/Figures/perf_real_dataset2.png" align="center" width="480"/>
 
 ### Coming:
 

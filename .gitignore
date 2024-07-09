@@ -12,7 +12,7 @@ Examples/Example1-Copy2.ipynb
 Examples/Untitled.ipynb
 Examples/comparison metacells.ipynb
 Examples/test.npy
-atacnet/adaptative_graph_lasso.py
+circe/adaptative_graph_lasso.py
 
 
 # Ignore build directory

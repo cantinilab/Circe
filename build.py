@@ -20,10 +20,10 @@ else:
     extra_link_args = ["-llapack"]
 
 extensions = [
-    Extension("atacnet.pyquic",
-              packages=["atacnet", "atacnet.pyquic"],
+    Extension("circe.pyquic",
+              packages=["circe", "circe.pyquic"],
               include_dirs=include_dirs,
-              sources=["atacnet/pyquic/QUIC.C", "atacnet/pyquic/pyquic.pyx"],
+              sources=["circe/pyquic/QUIC.C", "circe/pyquic/pyquic.pyx"],
               extra_compile_args=extra_compile_args,
               extra_link_args=extra_link_args,
               language="c++"

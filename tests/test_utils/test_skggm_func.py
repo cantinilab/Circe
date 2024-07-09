@@ -2,8 +2,8 @@ import anndata as ad
 import numpy as np
 import pandas as pd
 
-from atacnet.rank_correlation import _compute_ranks
-from atacnet.quic_graph_lasso import QuicGraphicalLasso
+from circe.rank_correlation import _compute_ranks
+from circe.quic_graph_lasso import QuicGraphicalLasso
 
 import pytest
 
@@ -73,5 +73,4 @@ with pytest.raises(Exception) as ValueError:
         auto_scale=False,
         lam=np.array([1.0, 1.0])
         )
-    
     graph_lasso_model.fit(cov)
