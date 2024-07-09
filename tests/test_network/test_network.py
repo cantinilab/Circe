@@ -136,8 +136,12 @@ def test_network_atac():
         max_alpha_iteration=10,
     )
 
+    # Error if only one region is given
+    with pytest.raises(Exception) as ValueError:
+        ci.compute_atac_network(atac[:, 1])
+
     # Error if only one sample is given
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as ValueError:
         ci.compute_atac_network(atac[1, :])
 
     # Extract from AnnData.varp the dataframe listing the edges (peak1 - peak2)
@@ -157,14 +161,14 @@ def test_network_atac():
     with pytest.raises(Exception) as KeyError:
         ci.extract_atac_links(atac, key="wrong_key")
 
-    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5)
+    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, sep=('_', '_'))
     fig, ax = plt.subplots(1)
-    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, ax=ax)
+    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, sep=('_', '_'), ax=ax)
 
     # Test if wrong chromosome name is given
-    with pytest.raises(Exception):
-        ci.draw.plot_connections(atac_df, "chr100", 1e5, 3e5)
+    with pytest.raises(Exception) as ValueError:
+        ci.draw.plot_connections(atac_df, "chr100", 1e5, 3e5, sep=('_', '_'))
 
     # Test if wrong start or end column name is given
-    with pytest.raises(Exception):
-        ci.draw.plot_connections(atac_df, "chr1", 0, 0)
+    with pytest.raises(Exception) as ValueError:
+        ci.draw.plot_connections(atac_df, "chr1", 0, 0, sep=('_', '_'))
