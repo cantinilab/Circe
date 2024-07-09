@@ -9,7 +9,7 @@ package_data = \
 
 setup_kwargs = {
     'name': 'atacnet',
-    'version': '0.1.0',
+    'version': '0.1.8',
     'description': '',
     'long_description': 'None',
     'author': 'Remi-Trimbour',

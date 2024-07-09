@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "atacnet"
-version = "0.1.6"
+version = "0.1.8"
 description = "Package for building co-accessibility networks from ATAC-seq data."
 authors = ["Rémi Trimbour <remi.trimbour@pasteur.fr>"]
 packages = [{include = "atacnet"}]
