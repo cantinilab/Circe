@@ -17,14 +17,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install flake8 pytest pre-commit
           pip install .[full]
-      - name: Run ATS
-        uses: codecov/codecov-ats@v0
-        env:
-          CODECOV_STATIC_TOKEN: ${{ secrets.CODECOV_STATIC_TOKEN }}
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Run tests and collect coverage
         run: |
-          pip install -e .
           pip install pytest-cov
           python -c 'import os; os.chdir("tests/"); import circe.pyquic; print(circe.pyquic)'
           pytest -s --cov "circe"
