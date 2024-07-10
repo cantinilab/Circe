@@ -756,7 +756,6 @@ def sliding_graphical_lasso(
                 shape=(anndata.X.shape[1], anndata.X.shape[1]),
             )
 
-    print(len(idx_["window_0"]), len(idy_["window_0"]))
     results = reconcile(results, idx_, idy_)
 
     print("Done !")
@@ -780,7 +779,6 @@ def reconcile(
                      [results_gl[k] for k in results_keys])
 
     # Initiate divider depending on number of overlapping windows
-    print(len(idx_gl[results_keys[0]]), len(idy_gl[results_keys[0]]))
     divider = sp.sparse.csr_matrix(
         ([1 for i in range(len(idx_gl[results_keys[0]]))],
          (idx_gl[results_keys[0]].astype(int),
@@ -805,15 +803,11 @@ def reconcile(
     average = average - sp.sparse.csr_matrix.multiply(
         average, signs_disaggreeing)
     # Remove also disagreeing values from divider
-    print(divider.sum())
     divider = sp.sparse.csr_matrix.multiply(divider, average.astype(bool).astype(int))
-    print(divider.sum())
 
     # Delete the sign_disagreeing matrix
     del signs_disaggreeing
 
     # Divide the sum by number of values
-    print(average.data)
     average.data = average.data/divider.data
-    print(average.data)
     return sp.sparse.coo_matrix(average)

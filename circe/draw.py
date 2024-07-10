@@ -93,6 +93,7 @@ def plot_connections(
                              "score"
                              ]]
     max_height = coordinates.iloc[:, 4].max()
+    print(max_height)
 
     for coordinate in coordinates.index:
         coords = coordinates.loc[coordinate, :].values
@@ -102,7 +103,7 @@ def plot_connections(
         center_arc = (coords[1] + coords[3] + coords[0] + coords[2])/4
         width_arc = (coords[3] + coords[2])/2 - (coords[1] + coords[0])/2
         height_arc = np.abs(coords[4]*2)
-        alpha_arc = height_arc/2/np.abs(max_height) if transparency_by_score else 1
+        alpha_arc = height_arc/(2*np.abs(max_height)) if transparency_by_score else 1
         lw_arc = height_arc*2/np.abs(max_height) if width_by_score else 4
 
         color = "#4584b6" if coords[4] > 0 else "#ffde57"

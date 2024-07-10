@@ -28,16 +28,15 @@ def _init_coefs(X, method="corrcoef"):
         return method(X)
     elif method == "precomputed":
         init_cov = X.copy()
-        # Accept sparse data only if precomputed
-        if issparse(init_cov):
-            return init_cov, np.max(np.abs(init_cov.data))
-        else:
-            return init_cov, np.max(np.abs(np.triu(init_cov)))
+        return init_cov, np.max(np.abs(np.triu(init_cov)))
     else:
         raise ValueError(
             (
-                "initialize_method must be 'corrcoef' or 'cov', "
+                """
+                Initialize_method must be 'corrcoef' or 'cov', 'spearman',
+                'kendalltau', 'precomputed', or a custom function."
                 "passed '{}' .".format(method)
+                """
             )
         )
 

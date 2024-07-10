@@ -53,19 +53,23 @@ def compute_metacells(
     """
 
     lsi(AnnData)
+    key_dim_reduction = f"X_{dim_reduction}"
     if dim_reduction == 'lsi':
-        sc.pp.neighbors(AnnData, use_rep="X_lsi", metric="cosine")
+        sc.pp.neighbors(AnnData, use_rep=key_dim_reduction, metric="cosine")
     else:
         raise "Only LSI is implemented for now."
 
     if projection == 'umap':
         sc.tl.umap(AnnData)
+        key_projection = 'X_umap'
+    elif projection is None:
+        key_projection = key_dim_reduction
     else:
         raise "Only UMAP is implemented for now."
 
     # Identify non-overlapping above a threshold metacells
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm['X_umap'])
-    distances, indices = nbrs.kneighbors(AnnData.obsm['X_umap'])
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm[key_projection])
+    distances, indices = nbrs.kneighbors(AnnData.obsm[key_projection])
     indices = [set(indice) for indice in indices]
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)

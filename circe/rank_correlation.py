@@ -148,30 +148,3 @@ def kendalltau_correlation(X, rowvar=False, weighted=False):
     rank_correlation = np.triu(rank_correlation, 1) + rank_correlation.T
 
     return np.sin(rank_correlation * np.pi / 2)
-
-
-def winsorized_rank_correlation(X, rowvar=False, weighted=False):
-    """
-    Computes rank correlations using a winsorized ranks.
-    Relevant to high dimensional settings where the n_samples < n_features
-    resulting too large variance in the ranks.
-
-    Parameters
-    ----------
-    X: array-like, shape = [n_samples, n_features]
-        Data matrix using which we compute the empirical
-        correlation
-
-    Returns
-    -------
-    rank_correlation
-
-    References
-    ----------
-
-    Liu, Han, John Lafferty, and Larry Wasserman.
-    "The nonparanormal: Semiparametric estimation of high dimensional
-    undirected graphs."
-    Journal of Machine Learning Research 10.Oct (2009): 2295-2328.
-    """
-    pass

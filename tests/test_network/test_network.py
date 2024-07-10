@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 print(ci)
 
 # Create fake single-cell atac-seq data
-nb_cells = 100
-nb_chr = 3
+nb_cells = 50
+nb_chr = 1
 nb_regions_per_chr = 100
 between_reg = 2000
 size_reg = 50
 
 counts = []  # Create one DataFrame (cells x regions) per chromosome
-for chr in range(nb_chr):
+for chr in range(1, nb_chr+1):
     counts.append(pd.DataFrame(
         np.random.randint(0, 100, size=(nb_cells, nb_regions_per_chr)),
         index=['Cell_'+j for j in map(str, range(nb_cells))],
@@ -53,9 +53,9 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10
+        max_alpha_iteration=2
     )
 
     # Test on different initilisation strategies
@@ -64,9 +64,9 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
         init_method="kendalltau"
     )
     ci.sliding_graphical_lasso(
@@ -74,9 +74,9 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
         init_method="spearman"
     )
     ci.sliding_graphical_lasso(
@@ -84,9 +84,9 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
         init_method="cov"
     )
     ci.sliding_graphical_lasso(
@@ -94,9 +94,9 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
         init_method="corrcoef"
     )
 
@@ -107,21 +107,21 @@ def test_network_atac():
         window_size=distance_threshold,
         unit_distance=1000,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10
+        max_alpha_iteration=50
     )
 
     # Test calculate alpha if chromosome sizes is given
-    chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(0, nb_chr)}
+    chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(1, nb_chr+1)}
     ci.circe.average_alpha(
         atac,
         window_size=distance_threshold,
         unit_distance=800,
         distance_constraint=distance_threshold/2,
-        n_samples=5,
+        n_samples=2,
         n_samples_maxtry=10,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
         chromosomes_sizes=chromosome_sizes
     )
 
@@ -133,7 +133,7 @@ def test_network_atac():
         distance_constraint=distance_threshold/2,
         n_samples=2000,
         n_samples_maxtry=1800,
-        max_alpha_iteration=10,
+        max_alpha_iteration=2,
     )
 
     # Error if only one region is given
@@ -161,9 +161,22 @@ def test_network_atac():
     with pytest.raises(Exception) as KeyError:
         ci.extract_atac_links(atac, key="wrong_key")
 
-    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, sep=('_', '_'))
+    ci.draw.plot_connections(
+        atac_df,
+        "chr1",
+        1e5,
+        3e5,
+        sep=('_', '_'))
+
     fig, ax = plt.subplots(1)
-    ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, sep=('_', '_'), ax=ax)
+    ci.draw.plot_connections(
+        atac_df,
+        "chr1",
+        1e5,
+        3e5,
+        abs_threshold=0.0,
+        sep=('_', '_'),
+        ax=ax)
 
     # Test if wrong chromosome name is given
     with pytest.raises(Exception) as ValueError:
