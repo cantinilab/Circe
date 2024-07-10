@@ -92,7 +92,7 @@ def plot_connections(
                              "Peak2_end",
                              "score"
                              ]]
-    max_height = coordinates.iloc[:, 4].max()
+    max_height = np.abs(coordinates.iloc[:, 4]).max()
     print(max_height)
 
     for coordinate in coordinates.index:
