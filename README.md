@@ -11,7 +11,7 @@
 [![Unit_Tests](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml/badge.svg)](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml)
 [![codecov](https://codecov.io/gh/cantinilab/circe/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/cantinilab/circe)
 [![PyPI version](https://img.shields.io/pypi/v/circe?color=blue)](https://img.shields.io/pypi/v/circe)
-[![Downloads](https://static.pepy.tech/badge/circe/month)](https://pepy.tech/project/circe)
+[![Downloads](https://static.pepy.tech/badge/circe/month)](https://pepy.tech/project/atacnet)
 
 
 ## Description
