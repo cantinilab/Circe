@@ -40,12 +40,12 @@ pip install "git+https://github.com/cantinilab/circe.git"
 ## Minimal example
 ```
 import anndata as ad
-import circe as an
+import circe as ci
 
 atac = ad.read_h5ad('atac_data.h5ad')
-an.add_region_infos(atac)
-an.compute_atac_network(atac)
-an.extract_atac_links(atac)
+atac = ci.add_region_infos(atac)
+ci.compute_atac_network(atac)
+df_network = ci.extract_atac_links(atac)
 ```
 
 ## Comparison to Cicero R package
