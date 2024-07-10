@@ -8,7 +8,7 @@ import pytest
 # Create fake single-cell atac-seq data
 nb_cells = 30
 nb_chr = 1
-nb_regions_per_chr = 50
+nb_regions_per_chr = 40
 between_reg = 2000
 size_reg = 50
 
