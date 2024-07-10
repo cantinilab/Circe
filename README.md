@@ -29,7 +29,7 @@ _If you have any suggestion, don't hesitate ! This package is still a work in pr
 The package can be installed using pip:
 
 ```
-pip install circe
+# actually it can't currently
 ```
 
  and from github
