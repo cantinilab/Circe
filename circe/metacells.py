@@ -13,7 +13,7 @@ def compute_metacells(
         max_overlap_metacells=0.9,
         max_metacells=5000,
         dim_reduction='lsi',
-        projection='umap',
+        projection=None,
         method='mean'
 ):
     """
@@ -65,7 +65,7 @@ def compute_metacells(
     elif projection is None:
         key_projection = key_dim_reduction
     else:
-        raise "Only UMAP is implemented for now."
+        raise "Only 'umap' and None are implemented for now."
 
     # Identify non-overlapping above a threshold metacells
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm[key_projection])
