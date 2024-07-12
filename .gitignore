@@ -9,6 +9,7 @@ __pycache__
 # Ignore jupyter notebook
 Example1-Copy1.ipynb
 Examples/Example1-Copy2.ipynb
+Examples/Example1.ipynb
 Examples/Untitled.ipynb
 Examples/comparison metacells.ipynb
 Examples/test.npy
