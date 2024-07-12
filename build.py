@@ -23,7 +23,7 @@ extensions = [
     Extension("circe.pyquic",
               packages=["circe", "circe.pyquic"],
               include_dirs=include_dirs,
-              sources=["circe/pyquic/QUIC.C", "circe/pyquic/pyquic.pyx"],
+              sources=["src/circe/pyquic/QUIC.C", "src/circe/pyquic/pyquic.pyx"],
               extra_compile_args=extra_compile_args,
               extra_link_args=extra_link_args,
               language="c++"
