@@ -57,7 +57,7 @@ def compute_metacells(
     if dim_reduction == 'lsi':
         sc.pp.neighbors(AnnData, use_rep=key_dim_reduction, metric="cosine")
     else:
-        raise "Only LSI is implemented for now."
+        raise "Only 'lsi' is implemented for now."
 
     if projection == 'umap':
         sc.tl.umap(AnnData)
