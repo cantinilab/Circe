@@ -2,7 +2,7 @@
 from setuptools import setup
 
 packages = \
-['src/circe']
+['circe']
 
 package_data = \
 {'': ['*']}
