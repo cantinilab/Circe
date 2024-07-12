@@ -30,7 +30,7 @@ def cov_to_corr(cov_matrix, tol=1e-20):
     return correlation_matrix
 
 
-def add_region_infos(anndata, sep=("_", "_"), inplace=True):
+def add_region_infos(anndata, sep=("_", "_"), inplace=False):
     """
     Get region informations from the var_names of anndata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
