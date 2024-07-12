@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from rich.progress import track
+from rich.progress import track, Progress
+import time
 import scipy as sp
 from . import quic_graph_lasso
 from functools import reduce
@@ -28,6 +29,48 @@ def cov_to_corr(cov_matrix, tol=1e-20):
     np.fill_diagonal(correlation_matrix, np.where(d < tol, cov_matrix.diagonal(), 1))
 
     return correlation_matrix
+
+
+def subset_region(adata, chr, start, end):
+    """
+    Subset anndata object on a specific region.
+
+    Parameters
+    ----------
+    adata : anndata object
+        anndata object with var_names as region names.
+    chr : str
+        Chromosome name.
+    start : int
+        Start position of the region.
+    end : int
+        End position of the region.
+
+    Returns
+    -------
+    anndata : anndata object
+        anndata object subsetted on the region defined by chr, start and end.
+    """
+
+    if len([True for i in adata.var.columns
+            if i in ["chromosome", "start", "end"]]) < 3:
+        raise KeyError(
+            """
+            'chr', 'start' and 'end' columns are not present in var.
+            Please use 'add_region_infos' function to add these informations
+            to your adata object.
+            """
+        )
+
+    # subset per chromosome
+    anndata = adata[:, adata.var['chromosome'] == chr]
+    # subset on region window
+    anndata = anndata[:, ((start <= anndata.var['start'])
+                          & (anndata.var['start'] <= end)) +
+                         ((start <= anndata.var['end'])
+                          & (anndata.var['end'] <= end))]
+
+    return anndata
 
 
 def add_region_infos(anndata, sep=("_", "_"), inplace=False):
@@ -239,6 +282,12 @@ def extract_atac_links(
                            .format(key, list(anndata.varp))
                            )
 
+    # Convert to COO format if needed
+    converted = False
+    if isinstance(anndata.varp[key], sp.sparse.csr_matrix):
+        anndata.varp[key] = anndata.varp[key].tocoo()
+        converted = True
+
     links = pd.DataFrame(
         [(row, col, data) for (row, col, data) in zip(
             [i for i in anndata.varp[key].row],
@@ -250,6 +299,10 @@ def extract_atac_links(
 
     links[columns[0]] = [anndata.var_names[i] for i in links[columns[0]]]
     links[columns[1]] = [anndata.var_names[i] for i in links[columns[1]]]
+
+    # Convert back to CSR format if it was converted
+    if converted:
+        anndata.varp[key] = anndata.varp[key].tocsr()
 
     return links
 
@@ -420,7 +473,61 @@ def average_alpha(
     seed=42
 ):
     """
-    todo
+    Calculate average alpha coefficient that determines the sparsity penalty
+    term in the graphical lasso penalty used for the sliding graphical lasso.
+    (The global penalty also uses distance between regions). 
+    The alpha coefficient is calculated by averaging alpha values from
+    'n_samples' windows, such as there's less than 5% of possible long-range
+    edges (> distance_constraint) and less than 20% co-accessible regions in
+    each window.
+
+    Parameters
+    ----------
+    anndata : anndata object
+        anndata object with var_names as region names.
+    window_size : int, optional
+        Size of the sliding window, where co-accessible regions can be found.
+        The default is 500000.
+    unit_distance : int, optional
+        Unit distance (in base pair) to divide distance by.
+        The default is 1000 and should be change carefully (in regards to
+        the distance between regions).
+    n_samples : int, optional
+        Number of windows used to calculate average optimal penalty coefficient
+        alpha. The default is 100.
+    n_samples_maxtry : int, optional
+        Maximum number of windows to try to calculate optimal penalty
+        coefficient alpha. Should be higher than n_samples. The default is 500.
+    max_alpha_iteration : int, optional
+        Maximum number of iterations to converge optimal penalty coefficient.
+        The default is 100.
+    s : float, optional
+        Parameter for penalizing long-range edges. The default is 0.75 and
+        should probably not be changed, unless you know what you are doing.
+    distance_constraint : int, optional
+        Distance threshold for defining long-range edges. It is used to fit the
+        penalty coefficient alpha. The default is 250000, and usually should
+        be window_size/2.
+    distance_parameter_convergence : float, optional
+        Convergence parameter for alpha (penalty) coefficiant calculation.
+        The default is 1e-22.
+    max_elements : int, optional
+        Maximum number of regions in a window. The default is 200.
+    chromosomes_sizes : dict, optional
+        Dictionary with chromosome names as keys and sizes as values.
+        The default is None, and will use the maximum end position of each
+        chromosome in anndata.var.
+    init_method : str, optional
+        Method to use to compute initial covariance matrix.
+        The default is "precomputed".
+        SHOULD BE CHANGED CAREFULLY.
+    seed : int, optional
+        Seed for random number generator. The default is 42.
+
+    Returns
+    -------
+    alpha : float
+        Average alpha coefficient.
     """
     start_slidings = [0, int(window_size / 2)]
 
@@ -439,8 +546,9 @@ def average_alpha(
                     chromosome_size = chromosomes_sizes[chromosome]
                 except Warning:
                     print(
-                        "{} not found as key in chromosome_size, using max end position".format(
-                            chromosome))
+                        "{} not found as key in chromosome_size, ".format(
+                            chromosome) +
+                        " using max end position.")
                     chromosome_size = anndata.var["end"][
                         anndata.var["chromosome"] == chromosome].max()
             # Get start positions of windows
@@ -480,37 +588,49 @@ def average_alpha(
         )
         random_windows = [idx_list[i] for i in idx_list_indices]
 
-    alpha_list = []
-    for window in track(random_windows, description="Calculating alpha"):
-        distances = get_distances_regions(
-            anndata[:, window]
-            )
+    # While loop to calculate alpha until n_samples measures are obtained
+    with Progress() as progress:
+        bar_alpha = progress.add_task(
+            "Calculating alpha", total=n_samples, auto_refresh=False)
+        alpha_list = []
 
-        alpha = local_alpha(
-            X=anndata[:, window].X,
-            distances=distances,
-            maxit=max_alpha_iteration,
-            unit_distance=unit_distance,
-            s=s,
-            distance_constraint=distance_constraint,
-            distance_parameter_convergence=distance_parameter_convergence,
-            max_elements=max_elements,
-            init_method=init_method
-        )
+        while not progress.finished:
+            for window in random_windows:
+                # Calculate distances between regions
+                distances = get_distances_regions(
+                    anndata[:, window]
+                    )
 
-        if isinstance(alpha, int) or isinstance(alpha, float):
-            alpha_list.append(alpha)
-        else:
-            pass
-        if len(alpha_list) > n_samples:
+                # Calculate individual alpha
+                alpha = local_alpha(
+                    X=anndata[:, window].X,
+                    distances=distances,
+                    maxit=max_alpha_iteration,
+                    unit_distance=unit_distance,
+                    s=s,
+                    distance_constraint=distance_constraint,
+                    distance_parameter_convergence=distance_parameter_convergence,
+                    max_elements=max_elements,
+                    init_method=init_method
+                )
+
+                # Append alpha to alpha_list if it's a number and not None
+                if isinstance(alpha, int) or isinstance(alpha, float):
+                    alpha_list.append(alpha)
+                    progress.update(bar_alpha, advance=1)
+                    progress.refresh()
+                else:
+                    pass
+
+                # Break the loop if n_samples is reached
+                if len(alpha_list) >= n_samples:
+                    time.sleep(0.001)
+                    break
+            # Break the while loop too if n_samples is reached
             break
 
-    if len(alpha_list) >= n_samples:
-        alpha_list = np.random.choice(
-            alpha_list,
-            size=n_samples,
-            replace=False)
-    else:
+    # Print warning if n_samples is not reached
+    if len(alpha_list) < n_samples:
         print(
             """
             only {} windows will be used to calculate optimal penalty,
@@ -522,6 +642,7 @@ def average_alpha(
             )
         )
 
+    # Calculate average alpha
     alpha = np.mean(alpha_list)
     return alpha
 
@@ -538,13 +659,21 @@ def sliding_graphical_lasso(
     n_samples=100,
     n_samples_maxtry=500,
     init_method="precomputed",
+    verbose=False,
     seed=42
 ):
     """
-    Extract sliding submatrix from a sparse correlation matrix.
+    Estimate co-accessibility scores between regions penalized on distance.
+    The function uses graphical lasso to estimate the precision matrix of
+    the co-accessibility scores. The function uses a sliding window approach.
 
-    WARNING: might look generalised for many overlaps but is not yet at the
-    end, that's why 'start_sliding' is hard coded as list of 2 values.
+    The function calculates an optimal penalty coefficient alpha
+    for each window, based on the distance between regions in the window.
+    The function then calculates co-accessibility scores between regions in
+    each window using graphical lasso. The results are averaged across windows.
+
+    WARNING: might look generalised for many overlaps but is not yet,
+    that's why 'start_sliding' is hard coded as list of 2 values.
 
     Parameters
     ----------
@@ -581,6 +710,16 @@ def sliding_graphical_lasso(
         Method to use to compute initial covariance matrix.
         The default is "precomputed".
         SHOULD BE CHANGED CAREFULLY.
+    verbose : bool, optional
+        Print alpha coefficient. The default is False.
+    seed : int, optional
+        Seed for random number generator. The default is 42.
+
+    Returns
+    -------
+    results : dict
+        Dictionary with keys as window names and values as sparse matrices 
+        (csr) of co-accessibility scores.
     """
 
     # AnnData object should have more than 1 cell
@@ -588,7 +727,8 @@ def sliding_graphical_lasso(
         raise ValueError(
             """
             Not enough cells/regions in the AnnData object.
-            You need at least 2 cells and 2 regions to calculate co-accessibility.
+            You need at least 2 cells and 2 regions to calculate 
+            co-accessibility.
             """
         )
     # print("Calculating penalty coefficient alpha...")
@@ -606,7 +746,8 @@ def sliding_graphical_lasso(
         init_method=init_method,
         seed=seed
     )
-    print("Alpha coefficient calculated : {}".format(alpha))
+    if verbose:
+        print("Alpha coefficient calculated : {}".format(alpha))
 
     start_slidings = [0, int(window_size / 2)]
 
@@ -624,12 +765,12 @@ def sliding_graphical_lasso(
         slide_results["idy"] = np.array([])
         idx_["window_" + str(k)] = np.array([])
         idy_["window_" + str(k)] = np.array([])
-        if k == 0:
-            print("Starting to process chromosomes : {}".format(
-                anndata.var["chromosome"].unique()))
-        else:
-            print("Finishing to process chromosomes : {}".format(
-                anndata.var["chromosome"].unique()))
+#        if k == 0:
+#            print("Starting to process chromosomes : {}".format(
+#                anndata.var["chromosome"].unique()))
+#        else:
+#            print("Finishing to process chromosomes : {}".format(
+#                anndata.var["chromosome"].unique()))
         for chromosome in track(
             anndata.var["chromosome"].unique(),
             description="Calculating co-accessibility: {}/2".format(
@@ -810,4 +951,4 @@ def reconcile(
 
     # Divide the sum by number of values
     average.data = average.data/divider.data
-    return sp.sparse.coo_matrix(average)
+    return average
