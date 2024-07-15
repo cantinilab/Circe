@@ -36,6 +36,7 @@ pip install circe-py
 ```
 pip install "git+https://github.com/cantinilab/circe.git"
 ```
+*Warning: If you clone the repo, don't stay in the repo to run your script because python will import the non-compiled cython file (probable error: circe.pyquic does not have a quic function)*
 
 ## Minimal example
 ```
@@ -70,11 +71,11 @@ Performance on real dataset 2:
 
 ### Coming:
 
-- _**Calculate metacells !**_
-- _Add stats on similarity on large datasets._
-- _Add stats on runtime, memory usage._
-- This package can be run on multiple cores. _Currently working to speed up the mutlithreding use._
-- _Fix seed for reproducibility._
+- ~~_**Calculate metacells !**_~~
+- ~~_Add stats on similarity on large datasets._~~
+- ~~_Add stats on runtime, memory usage._~~
+- _Implement the multithreading use. Should speed up even more._
+- ~~_Fix seed for reproducibility._~~
 
 ## Usage
 It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
