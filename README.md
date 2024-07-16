@@ -52,7 +52,7 @@ df_network = ci.extract_atac_links(atac)
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
 
-All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/circe_benchmark)
+All tests can be found in the [circe benchmark repo](https://github.com/r-trimbour/circe_benchmark/)
 
 ### Toy dataset 1 (fake data): 
 - Pearson correlation coefficient: 0.999126
