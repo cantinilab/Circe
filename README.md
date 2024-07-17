@@ -54,12 +54,7 @@ df_network = ci.extract_atac_links(atac)
 
 All tests can be found in the [circe benchmark repo](https://github.com/r-trimbour/circe_benchmark/)
 
-### Toy dataset 1 (fake data): 
-- Pearson correlation coefficient: 0.999126
-- Spearman correlation coefficient: 0.99838
-<img src="https://raw.githubusercontent.com/cantinilab/circe/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
-
-### Real dataset 2 (subsample of neurips PBMC)
+### Real dataset 2 - subsample of Neurips PBMC (2021)
 - Pearson correlation coefficient: 0.999958
 - Spearman correlation coefficient: 0.999911
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
