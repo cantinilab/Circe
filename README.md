@@ -53,7 +53,7 @@ df_network = ci.extract_atac_links(atac)
 
 All tests can be found in the [circe benchmark repo](https://github.com/r-trimbour/circe_benchmark/)
 
-### Real dataset 2 - subsample of Neurips PBMC (2021)
+### Real dataset 2 - subsample of 10x PBMC (2021)
 - Pearson correlation coefficient: 0.999958
 - Spearman correlation coefficient: 0.999911
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
