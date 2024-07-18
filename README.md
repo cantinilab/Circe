@@ -42,10 +42,16 @@ pip install "git+https://github.com/cantinilab/circe.git"
 import anndata as ad
 import circe as ci
 
+# Load the data
 atac = ad.read_h5ad('atac_data.h5ad')
 atac = ci.add_region_infos(atac)
+
+# Compute the co-accessibility network
 ci.compute_atac_network(atac)
-df_network = ci.extract_atac_links(atac)
+
+# Extract the network and find CCANs modules
+circe_network = ci.extract_atac_links(atac)
+ccans_module = ci.find_ccans(atac)
 ```
 
 ## Comparison to Cicero R package
