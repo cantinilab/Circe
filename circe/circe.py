@@ -6,17 +6,39 @@ import scipy as sp
 from . import quic_graph_lasso
 from functools import reduce
 import warnings
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*Reordering categories will always return a new Categorical object.*")
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
+from typing import Union
+warnings.filterwarnings(
+    "ignore", category=FutureWarning,
+    message=r".*Reordering categories will always return a new Categorical object.*")
+warnings.filterwarnings(
+    "ignore", category=FutureWarning,
+    message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
 
 
 def cov_to_corr(cov_matrix, tol=1e-20):
-    """Convert covariance matrix to correlation matrix, with a tolerance for diagonal elements."""
+    """
+    Convert covariance matrix to correlation matrix,
+    with a tolerance for diagonal elements.
+    
+    Parameters
+    ----------
+    cov_matrix : np.array
+        Covariance matrix.
+    tol : float, optional
+        Tolerance for diagonal elements. The default is 1e-20.
+
+    Returns
+    -------
+    correlation_matrix : np.array
+        Correlation matrix.
+    """
     # Diagonal elements (variances)
     d = np.sqrt(cov_matrix.diagonal())
 
-    # Apply tolerance: if a variance is less than tol, use it directly instead of normalizing to 1.
-    # This avoids division by very small numbers which can lead to numerical instability.
+    # Apply tolerance: if a variance is less than tol,
+    # use it directly instead of normalizing to 1.
+    # This avoids division by very small numbers
+    # which can lead to numerical instability.
     d_tol = np.where(d < tol, cov_matrix.diagonal(), d)
 
     # Outer product of the adjusted standard deviations vector
@@ -31,7 +53,7 @@ def cov_to_corr(cov_matrix, tol=1e-20):
     return correlation_matrix
 
 
-def subset_region(adata, chr, start, end):
+def subset_region(adata, chromosome, start, end):
     """
     Subset anndata object on a specific region.
 
@@ -39,7 +61,7 @@ def subset_region(adata, chr, start, end):
     ----------
     adata : anndata object
         anndata object with var_names as region names.
-    chr : str
+    chromosome : str
         Chromosome name.
     start : int
         Start position of the region.
@@ -63,7 +85,7 @@ def subset_region(adata, chr, start, end):
         )
 
     # subset per chromosome
-    anndata = adata[:, adata.var['chromosome'] == chr]
+    anndata = adata[:, adata.var['chromosome'] == chromosome]
     # subset on region window
     anndata = anndata[:, ((start <= anndata.var['start'])
                           & (anndata.var['start'] <= end)) +
@@ -154,17 +176,19 @@ def sort_regions(anndata):
 
 def compute_atac_network(
     anndata,
-    window_size=500000,
+    window_size=None,
     unit_distance=1000,
-    distance_constraint=250000,
-    s=0.75,
+    distance_constraint=None,
+    s=None,
+    organism=None,
     max_alpha_iteration=100,
     distance_parameter_convergence=1e-22,
     max_elements=200,
     n_samples=100,
     n_samples_maxtry=500,
     key="atac_network",
-    seed=42
+    seed=42,
+    verbose=False
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -192,17 +216,25 @@ def compute_atac_network(
         anndata object with var_names as region names.
     window_size : int, optional
         Size of sliding window, in which co-accessible regions can be found.
-        The default is 500000.
+        The default is None and will be set to 500000 if organism is None.
+        This parameter is organism specific.
     unit_distance : int, optional
         Distance between two regions in the matrix, in base pairs.
         The default is 1000.
     distance_constraint : int, optional
         Distance threshold for defining long-range edges.
         It is used to fit the penalty coefficient alpha.
-        The default is 250000.
+        The default is None and will be set to 250000 if organism is None.
+        This parameter is organism specific.
     s : float, optional
-        Parameter for penalizing long-range edges. The default is 0.75 and
-        should probably not be changed, unless you know what you are doing.
+        Parameter for penalizing long-range edges. The default is None and
+        will be set to 0.75 if organism is None. This parameter is organism
+        specific.
+    organism : str, optional
+        Organism name. The default is None.
+        If s, window_size and distance_constraint are None, will use
+        organism-specific values.
+        Otherwise, will use the values passed as arguments.
     max_alpha_iteration : int, optional
         Maximum number of iterations to calculate optimal penalty coefficient.
         The default is 100.
@@ -219,6 +251,10 @@ def compute_atac_network(
         coefficient alpha. Should be higher than n_samples. The default is 500.
     key : str, optional
         Key to store the results in adata.varp. The default is "atac_network".
+    seed : int, optional
+        Seed for random number generator. The default is 42.
+    verbose : bool, optional
+        If True, will print additional information. The default is False.
 
     Returns
     -------
@@ -231,12 +267,14 @@ def compute_atac_network(
         unit_distance=unit_distance,
         distance_constraint=distance_constraint,
         s=s,
+        organism=organism,
         max_alpha_iteration=max_alpha_iteration,
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
         n_samples=n_samples,
         n_samples_maxtry=n_samples_maxtry,
-        seed=seed
+        seed=seed,
+        verbose=verbose
     )
 
 
@@ -273,9 +311,11 @@ def extract_atac_links(
         if len(list(anndata.varp)) == 1:
             key = list(anndata.varp)[0]
         else:
-            raise "Several keys were found in adata.varp: {}, ".format(
-                list(anndata.varp))\
-                + "please precise which keyword use (arg 'key'))"
+            raise KeyError(
+                "Several keys were found in adata.varp: {}, ".format(
+                    list(anndata.varp)) +
+                "please precise which keyword use (arg 'key'))"
+            )
     else:
         if key not in list(anndata.varp):
             raise KeyError("The key you provided ({}) is not in adata.varp: {}"
@@ -299,6 +339,7 @@ def extract_atac_links(
 
     links[columns[0]] = [anndata.var_names[i] for i in links[columns[0]]]
     links[columns[1]] = [anndata.var_names[i] for i in links[columns[1]]]
+    links = links.reset_index(drop=True)
 
     # Convert back to CSR format if it was converted
     if converted:
@@ -307,7 +348,7 @@ def extract_atac_links(
     return links
 
 
-def calc_penalty(alpha, distance, unit_distance=1000):
+def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
     """
     Calculate distance penalties for graphical lasso, based on the formula
     from Cicero's paper: alpha * (1 - (unit_distance / distance) ** 0.75).
@@ -323,15 +364,17 @@ def calc_penalty(alpha, distance, unit_distance=1000):
     unit_distance : int, optional
         Unit distance (in base pair) to divide distance by.
         The default is 1000 for 1kb (as in Cicero's paper).
+    s : float, optional
+        Parameter for penalizing long-range edges. The default is 0.75
+        (Human/Mouse value). This parameter is organism specific.
 
     Returns
     -------
     penalties : np.array
         Penalty coefficients for graphical lasso.
-
     """
     with np.errstate(divide="ignore"):
-        penalties = alpha * (1 - (unit_distance / distance) ** 0.75)
+        penalties = alpha * (1 - (unit_distance / distance) ** s)
     penalties[~np.isfinite(penalties)] = 0
     penalties[penalties < 0] = 0
     return penalties
@@ -354,8 +397,9 @@ def get_distances_regions(anndata):
     """
 
     # Store start and end positions in two arrays
-    m, n = np.meshgrid((anndata.var["end"].values + anndata.var["start"].values)/2,
-                       (anndata.var["end"].values + anndata.var["start"].values)/2)
+    m, n = np.meshgrid(
+        (anndata.var["end"].values + anndata.var["start"].values)/2,
+        (anndata.var["end"].values + anndata.var["start"].values)/2)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -375,7 +419,43 @@ def local_alpha(
     init_method="precomputed"
 ):
     """
-    todo
+    Calculate optimal penalty coefficient alpha for a given window.
+    The alpha coefficient is fitted based on the number of long-range edges
+    (> distance_constraint) and short-range edges in the window.
+
+    Parameters
+    ----------
+    X : np.array
+        Matrix of regions in a window.
+    distances : np.array
+        Distance between regions in the window.
+    maxit : int, optional
+        Maximum number of iterations to converge alpha. The default is 100.
+    s : float, optional
+        Parameter for penalizing long-range edges. The default is 0.75
+        (Human/Mouse value). This parameter is organism specific.
+    distance_constraint : int, optional
+        Distance threshold for defining long-range edges. It is used to fit the
+        penalty coefficient alpha. The default is 250000 (Human/Mouse value).
+        This parameter is organism specific and usually half of window_size.
+    distance_parameter_convergence : float, optional
+        Convergence parameter for alpha (penalty) coefficiant calculation.
+        The default is 1e-22.
+    max_elements : int, optional
+        Maximum number of regions in a window. The default is 200.
+    unit_distance : int, optional
+        Unit distance (in base pair) to divide distance by.
+        The default is 1000.
+    init_method : str, optional
+        Method to use to compute initial covariance matrix.
+        The default is "precomputed".
+        SHOULD BE CHANGED CAREFULLY.
+
+    Returns
+    -------
+    distance_parameter : float
+        Optimal penalty coefficient alpha.
+
     """
     # Check if there is more elements than max_elements
     if X.shape[1] > max_elements:
@@ -403,7 +483,10 @@ def local_alpha(
         cov = cov - (- 1e-4) * np.eye(len(cov))
         # Get penalties
         penalties = calc_penalty(
-            distance_parameter, distances, unit_distance=unit_distance
+            distance_parameter,
+            distances,
+            unit_distance=unit_distance,
+            s=s
         )
 
         # Initiating graphical lasso
@@ -470,12 +553,13 @@ def average_alpha(
     max_elements=200,
     chromosomes_sizes=None,
     init_method="precomputed",
-    seed=42
+    seed=42,
+    verbose=False
 ):
     """
     Calculate average alpha coefficient that determines the sparsity penalty
     term in the graphical lasso penalty used for the sliding graphical lasso.
-    (The global penalty also uses distance between regions). 
+    (The global penalty also uses distance between regions).
     The alpha coefficient is calculated by averaging alpha values from
     'n_samples' windows, such as there's less than 5% of possible long-range
     edges (> distance_constraint) and less than 20% co-accessible regions in
@@ -487,7 +571,8 @@ def average_alpha(
         anndata object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
-        The default is 500000.
+        The default is 500000 (Human/Mouse value). This parameter is organism
+        specific.
     unit_distance : int, optional
         Unit distance (in base pair) to divide distance by.
         The default is 1000 and should be change carefully (in regards to
@@ -502,12 +587,12 @@ def average_alpha(
         Maximum number of iterations to converge optimal penalty coefficient.
         The default is 100.
     s : float, optional
-        Parameter for penalizing long-range edges. The default is 0.75 and
-        should probably not be changed, unless you know what you are doing.
+        Parameter for penalizing long-range edges. The default is 0.75
+        (Human/Mouse value). This parameter is organism specific.
     distance_constraint : int, optional
         Distance threshold for defining long-range edges. It is used to fit the
-        penalty coefficient alpha. The default is 250000, and usually should
-        be window_size/2.
+        penalty coefficient alpha. The default is 250000 (Human/Mouse value).
+        This parameter is organism specific and usually half of window_size.
     distance_parameter_convergence : float, optional
         Convergence parameter for alpha (penalty) coefficiant calculation.
         The default is 1e-22.
@@ -523,6 +608,9 @@ def average_alpha(
         SHOULD BE CHANGED CAREFULLY.
     seed : int, optional
         Seed for random number generator. The default is 42.
+    verbose : bool, optional
+        Print alpha coefficient and number of windows used to
+        calculate it if inferior to n_samples. The default is False.
 
     Returns
     -------
@@ -631,16 +719,17 @@ def average_alpha(
 
     # Print warning if n_samples is not reached
     if len(alpha_list) < n_samples:
-        print(
-            """
-            only {} windows will be used to calculate optimal penalty,
-            wasn't able to find {} windows with a non-null number
-            of regions inferior to max_elements={},
-            AND having long-range edges (>distance_constraint)
-            .""".format(
-                len(alpha_list), n_samples, max_elements
+        if verbose:
+            warnings.warn(
+                """
+                only {} windows will be used to calculate optimal penalty,
+                wasn't able to find {} windows with a non-null number
+                of regions inferior to max_elements={},
+                AND having long-range edges (>distance_constraint)
+                .""".format(
+                    len(alpha_list), n_samples, max_elements
+                ), UserWarning
             )
-        )
 
     # Calculate average alpha
     alpha = np.mean(alpha_list)
@@ -649,10 +738,11 @@ def average_alpha(
 
 def sliding_graphical_lasso(
     anndata,
-    window_size: int = 500_000,
+    window_size: Union[int, None] = None,
     unit_distance=1_000,
-    distance_constraint=250_000,
-    s=0.75,
+    distance_constraint=None,
+    s=None,
+    organism=None,
     max_alpha_iteration=100,
     distance_parameter_convergence=1e-22,
     max_elements=200,
@@ -681,17 +771,25 @@ def sliding_graphical_lasso(
         anndata object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
-        The default is 500000.
+        The default is None and will be set to 500000 if organism is None.
+        This parameter is organism specific.
     unit_distance : int, optional
         Distance between two regions in the matrix, in base pairs.
         The default is 1000.
     distance_constraint : int, optional
         Distance threshold for defining long-range edges.
         It is used to fit the penalty coefficient alpha.
-        The default is 250000.
+        The default is None and will be set to 250000 if organism is None.
+        This parameter is organism specific.
     s : float, optional
-        Parameter for penalizing long-range edges. The default is 0.75 and
-        should probably not be changed, unless you know what you are doing.
+        Parameter for penalizing long-range edges. The default is None and
+        will be set to 0.75 if organism is None.
+        This parameter is organism specific.
+    organism : str, optional
+        Organism name. The default is None.
+        If s, window_size and distance_constraint are None, will use
+        organism-specific values.
+        Otherwise, will use the values passed as arguments.
     max_alpha_iteration : int, optional
         Maximum number of iterations to calculate optimal penalty coefficient.
         The default is 100.
@@ -718,16 +816,112 @@ def sliding_graphical_lasso(
     Returns
     -------
     results : dict
-        Dictionary with keys as window names and values as sparse matrices 
+        Dictionary with keys as window names and values as sparse matrices
         (csr) of co-accessibility scores.
     """
+    default_organism = "human"
+    organism_values = {
+        "human": {
+            "window_size": 500_000,
+            "distance_constraint": 250_000,
+            "s": 0.75,
+        },
+        "mouse": {
+            "window_size": 500_000,
+            "distance_constraint": 250_000,
+            "s": 0.75,
+        },
+        "drosophila": {
+            "window_size": 100_000,
+            "distance_constraint": 50_000,
+            "s": 0.85,
+        },
+    }
+
+    if organism is not None:
+        if organism in organism_values.keys():
+            if window_size is None:
+                window_size = organism_values[organism]["window_size"]
+            else:
+                warnings.warn(
+                    """
+                    window_size is not None, using the value passed as argument.
+                    """, UserWarning)
+            if distance_constraint is None:
+                distance_constraint = organism_values[organism]["distance_constraint"]
+            else:
+                warnings.warn(
+                    """
+                    distance_constraint is not None,
+                    using the value passed as argument.
+                    """, UserWarning)
+            if s is None:
+                s = organism_values[organism]["s"]
+            else:
+                warnings.warn(
+                    """
+                    s is not None, using the value passed as argument.
+                    """, UserWarning)
+        else:
+            raise ValueError(
+                """
+                Organism not found in organism_values.
+                Please keep organism=None or use one of the organisms:
+                {}.
+                """.format(
+                    list(organism_values.keys())
+                )
+            )
+    else:
+        none_values = []
+        if window_size is None:
+            none_values.append("window_size")
+            window_size = organism_values[default_organism]["window_size"]
+        if distance_constraint is None:
+            none_values.append("distance_constraint") 
+            distance_constraint = window_size / 2
+        if s is None:
+            none_values.append("s")
+            s = organism_values[default_organism]["s"]
+        if none_values:
+            warnings.warn(
+                """
+                No organism, nor value passed for the parameters: {0},
+                using default values.
+                The default values are defined from human and mouse data,
+                you might want to change them if you are working with
+                another organisms.
+
+                Default values used:
+                {1}
+
+                You can check how to define them in {2}.
+                """.format(
+                    none_values,
+                    {key: value for key, value in organism_values["human"].items()
+                        if key in none_values},
+                    "/{citation/}"
+                    )
+            )
+
+    # Check if distance_constraint is not too high
+    if distance_constraint > window_size:
+        raise ValueError(
+            """
+            distance_constraint should be lower than window_size.
+            """
+        )
+
+    # Check if distance_constraint is not too high
+    if distance_constraint is None:
+        distance_constraint = window_size / 2
 
     # AnnData object should have more than 1 cell
     if anndata.X.shape[0] < 2 or anndata.X.shape[1] < 2:
         raise ValueError(
             """
             Not enough cells/regions in the AnnData object.
-            You need at least 2 cells and 2 regions to calculate 
+            You need at least 2 cells and 2 regions to calculate
             co-accessibility.
             """
         )
@@ -744,7 +938,8 @@ def sliding_graphical_lasso(
         distance_parameter_convergence=distance_parameter_convergence,
         max_elements=max_elements,
         init_method=init_method,
-        seed=seed
+        seed=seed,
+        verbose=verbose
     )
     if verbose:
         print("Alpha coefficient calculated : {}".format(alpha))
@@ -913,7 +1108,7 @@ def reconcile(
     print("Averaging co-accessibility scores across windows...")
 
     #################
-    ### To keep entries contained in 2 windows
+    # To keep entries contained in 2 windows
 
     # sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
@@ -944,7 +1139,8 @@ def reconcile(
     average = average - sp.sparse.csr_matrix.multiply(
         average, signs_disaggreeing)
     # Remove also disagreeing values from divider
-    divider = sp.sparse.csr_matrix.multiply(divider, average.astype(bool).astype(int))
+    divider = sp.sparse.csr_matrix.multiply(
+        divider, average.astype(bool).astype(int))
 
     # Delete the sign_disagreeing matrix
     del signs_disaggreeing
