@@ -19,8 +19,7 @@ This repo contains a python package for inferring **co-accessibility networks fr
 
 It is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
 
-Results may slitghly vary between both packages, notably due to the different implementations of graphical lasso. 
-<br> Currently, scores are very close when applied to the same metacells, computed from Cicero's methodology. (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
+<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
 
 _If you have any suggestion, don't hesitate ! This package is still a work in progress :)_
 
@@ -52,14 +51,9 @@ df_network = ci.extract_atac_links(atac)
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
 
-All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/circe_benchmark)
+All tests can be found in the [circe benchmark repo](https://github.com/r-trimbour/circe_benchmark/)
 
-### Toy dataset 1 (fake data): 
-- Pearson correlation coefficient: 0.999126
-- Spearman correlation coefficient: 0.99838
-<img src="https://raw.githubusercontent.com/cantinilab/circe/main/Figures/correlation_toy_dataset1.png" align="center" width="480"/>
-
-### Real dataset 2 (subsample of neurips PBMC)
+### Real dataset 2 - subsample of 10x PBMC (2021)
 - Pearson correlation coefficient: 0.999958
 - Spearman correlation coefficient: 0.999911
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/correlation_real_dataset2.png" align="center" width="480"/>
@@ -79,4 +73,7 @@ Performance on real dataset 2:
 
 ## Usage
 It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
+
+## Citation
+Trimbour Rémi (2024). Circe: Co-accessibility network from ATAC-seq data in python (based on Cicero package). Package version 0.2.0.
 
