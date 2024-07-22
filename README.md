@@ -53,6 +53,15 @@ ci.compute_atac_network(atac)
 circe_network = ci.extract_atac_links(atac)
 ccans_module = ci.find_ccans(atac)
 ```
+### Visualisation
+```
+ci.plot_connections(
+    adata,
+    chromosome="chr1",
+    start=1e7,
+    end=1.3e7
+```
+<img src="https://github.com/cantinilab/circe/raw/main/Figures/circe_figure.png" align="center"/>
 
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
