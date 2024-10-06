@@ -9,7 +9,7 @@ package_data = \
 
 setup_kwargs = {
     'name': 'circe',
-    'version': '0.3.0',
+    'version': '0.3.1',
     'description': '',
     'long_description': 'None',
     'author': 'Remi-Trimbour',

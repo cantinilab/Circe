@@ -190,6 +190,7 @@ def compute_atac_network(
     n_samples_maxtry=500,
     key="atac_network",
     seed=42,
+    njobs=1,
     verbose=False
 ):
     """
@@ -276,6 +277,7 @@ def compute_atac_network(
         n_samples=n_samples,
         n_samples_maxtry=n_samples_maxtry,
         seed=seed,
+        njobs=njobs,
         verbose=verbose
     )
 
