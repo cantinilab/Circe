@@ -16,6 +16,7 @@ def plot_connections(
     abs_threshold=0.4,
     only_positive=False,
     sep=('_', '_'),
+    ax_labels=True,
     transparency_by_score=True,
     width_by_score=True,
     figsize=(20, 6),
@@ -47,6 +48,8 @@ def plot_connections(
     sep : tuple
         Tuple with two strings to separate the chromosome name from the start
         and end of the region.
+    ax_labels : bool
+        If True, the axis labels are shown.
     transparency_by_score : bool
         If True, the transparency of the arcs is proportional to the score.
     width_by_score : bool
@@ -199,14 +202,14 @@ def plot_connections(
         start, end = int(start), int(end)
         ax.add_patch(
             Rectangle(
-                xy=(start, -0.05),
-                height=0.2*np.abs(max_height),
+                xy=(start, -0.125*np.abs(max_height)),
+                height=0.1*np.abs(max_height),
                 width=end-start,
                 facecolor="#646464",
                 **regions_params))
 
     ax.set_xlim(coordinates.iloc[:, 0].min(), coordinates.iloc[:, 3].max())
-    ax.set_ylim(-0.05, np.abs(max_height * 1.1))
+    ax.set_ylim(-0.125*np.abs(max_height), np.abs(max_height * 1.1))
     ax.spines[['right', 'top', 'left']].set_visible(False)
 
     x_formatter = ScalarFormatter(useOffset=True, useMathText=True)
@@ -222,8 +225,11 @@ def plot_connections(
         color="black"
     )
     ax.tick_params(axis='x', which='major', labelsize=14)
-    ax.tick_params(axis='y', which='major', labelsize=20)
+    ax.tick_params(axis='y', which='major', labelsize=15)
     # ax.set_axis_off()
+    if ax_labels:
+        ax.set_ylabel("Co-accessibility", fontsize=20)
+        ax.set_xlabel("Coordinates", fontsize=20)
 
     # plt.show()
 
