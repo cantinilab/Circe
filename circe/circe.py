@@ -7,6 +7,8 @@ from . import quic_graph_lasso
 from functools import reduce
 import warnings
 from typing import Union
+from joblib import Parallel, delayed
+
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
     message=r".*Reordering categories will always return a new Categorical object.*")
