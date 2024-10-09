@@ -1076,16 +1076,16 @@ def sliding_graphical_lasso(
             
             # Concatenate the lists into the final result arrays
             slide_results = {
-                "scores": np.concatenate(scores_list),
-                "idx": np.concatenate(idx_list),
-                "idy": np.concatenate(idy_list)
+                "scores": np.concatenate([slide_results["scores"], *scores_list]),
+                "idx": np.concatenate([slide_results["idx"], *idx_list]),
+                "idy": np.concatenate([slide_results["idy"], *idy_list])
             }
-            # Create sparse matrix
-            results["window_" + str(k)] = sp.sparse.coo_matrix(
-                (slide_results["scores"],
-                 (slide_results["idx"], slide_results["idy"])),
-                shape=(anndata.X.shape[1], anndata.X.shape[1]),
-            )
+        # Create sparse matrix
+        results["window_" + str(k)] = sp.sparse.coo_matrix(
+            (slide_results["scores"],
+                (slide_results["idx"], slide_results["idy"])),
+            shape=(anndata.X.shape[1], anndata.X.shape[1]),
+        )
     results = reconcile(results, idx_, idy_)
 
     print("Done !")
