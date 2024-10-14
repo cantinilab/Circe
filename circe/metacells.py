@@ -14,7 +14,8 @@ def compute_metacells(
         max_metacells=5000,
         dim_reduction='lsi',
         projection=None,
-        method='mean'
+        method='mean',
+        metric='cosine'
 ):
     """
     Compute metacells by suming/averaging expression of neighbouring cells.
@@ -45,6 +46,9 @@ def compute_metacells(
         The default is 'umap'.
     method : str, optional
         Method to use to compute metacells (mean or sum).
+    metric : str, optional
+        Distance type used to calculate distance between neighbors.
+        The default is 'cosine'.
 
     Returns
     -------
@@ -55,10 +59,12 @@ def compute_metacells(
     lsi(adata)
     key_dim_reduction = f"X_{dim_reduction}"
     if dim_reduction == 'lsi':
-        sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric="cosine")
-    elif key_dim_reduction in 
+        sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
+    elif dim_reduction in adata.obsm.keys():
+        print("Using adata.obsm['{}'] to identify neighboring cells".format(dim_reduction))
+        sc.pp.neighbors(adata, use_rep=dim_reduction, metric=metric)
     else:
-        raise "Only 'lsi' is implemented for now."
+        raise "Only 'lsi' is implemented for now, and no adata.obsm['{}'] coordinates found.".format(dim_reduction)
 
     if projection == 'umap':
         sc.tl.umap(adata)
