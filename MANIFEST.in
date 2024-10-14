@@ -1,0 +1,3 @@
+include circe/pyquic/*.pyx
+include circe/pyquic/*.C
+include circe/pyquic/*.h
