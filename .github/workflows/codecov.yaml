@@ -8,6 +8,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Install LAPACK
+        run: |
+          sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
