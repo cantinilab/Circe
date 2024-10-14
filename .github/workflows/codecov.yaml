@@ -19,7 +19,7 @@ jobs:
           pip install .[full]
       - name: Run tests and collect coverage
         run: |
-          pip install -e .
+          pip install -e . --config-settings editable_mode=compat
           pip install pytest-cov
           python -c 'import os; os.chdir("tests/"); import circe.pyquic; print(circe.pyquic)'
           pytest -s --cov "circe"
