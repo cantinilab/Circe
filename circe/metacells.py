@@ -8,13 +8,14 @@ import scanpy as sc
 from rich.progress import track
 
 def compute_metacells(
-        AnnData,
+        adata,
         k=50,
         max_overlap_metacells=0.9,
         max_metacells=5000,
         dim_reduction='lsi',
         projection=None,
-        method='mean'
+        method='mean',
+        metric='cosine'
 ):
     """
     Compute metacells by suming/averaging expression of neighbouring cells.
@@ -25,7 +26,7 @@ def compute_metacells(
 
     Parameters
     ----------
-    AnnData : AnnData
+    adata : AnnData
         AnnData object
     k : int, optional
         Number of neighbours to consider.
@@ -45,6 +46,9 @@ def compute_metacells(
         The default is 'umap'.
     method : str, optional
         Method to use to compute metacells (mean or sum).
+    metric : str, optional
+        Distance type used to calculate distance between neighbors.
+        The default is 'cosine'.
 
     Returns
     -------
@@ -52,15 +56,18 @@ def compute_metacells(
         AnnData object containing metacells.
     """
 
-    lsi(AnnData)
+    lsi(adata)
     key_dim_reduction = f"X_{dim_reduction}"
     if dim_reduction == 'lsi':
-        sc.pp.neighbors(AnnData, use_rep=key_dim_reduction, metric="cosine")
+        sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
+    elif dim_reduction in adata.obsm.keys():
+        print("Using adata.obsm['{}'] to identify neighboring cells".format(dim_reduction))
+        sc.pp.neighbors(adata, use_rep=dim_reduction, metric=metric)
     else:
-        raise "Only 'lsi' is implemented for now."
+        raise "Only 'lsi' is implemented for now, and no adata.obsm['{}'] coordinates found.".format(dim_reduction)
 
     if projection == 'umap':
-        sc.tl.umap(AnnData)
+        sc.tl.umap(adata)
         key_projection = 'X_umap'
     elif projection is None:
         key_projection = key_dim_reduction
@@ -68,8 +75,8 @@ def compute_metacells(
         raise "Only 'umap' and None are implemented for now."
 
     # Identify non-overlapping above a threshold metacells
-    nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(AnnData.obsm[key_projection])
-    distances, indices = nbrs.kneighbors(AnnData.obsm[key_projection])
+    nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm[key_projection])
+    distances, indices = nbrs.kneighbors(adata.obsm[key_projection])
     indices = [set(indice) for indice in indices]
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
@@ -92,30 +99,30 @@ def compute_metacells(
     metacells_values = []
     for metacell in metacells:
         if method == 'mean':
-            if sp.sparse.issparse(AnnData.X):
+            if sp.sparse.issparse(adata.X):
                 metacells_values.append(
-                    np.array(np.mean([AnnData.X[i].toarray() for i in metacell], 0))[0]
+                    np.array(np.mean([adata.X[i].toarray() for i in metacell], 0))[0]
                 )
             else:
                 metacells_values.append(
-                    np.mean([AnnData.X[i] for i in metacell], 0)
+                    np.mean([adata.X[i] for i in metacell], 0)
                 )
         elif method == 'sum':
-            if sp.sparse.issparse(AnnData.X):
+            if sp.sparse.issparse(adata.X):
                 metacells_values.append(
-                    np.array(sum([AnnData.X[i].toarray() for i in metacell]))[0]
+                    np.array(sum([adata.X[i].toarray() for i in metacell]))[0]
                 )
             else:
                 metacells_values.append(
-                    sum([AnnData.X[i] for i in metacell])
+                    sum([adata.X[i] for i in metacell])
                 )
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
-    metacells_AnnData.var_names = AnnData.var_names
+    metacells_AnnData.var_names = adata.var_names
     metacells_AnnData.obs_names = [f"metacell_{i}" for i in range(len(metacells_values))]
-    metacells_AnnData.var = AnnData.var.copy()
-    metacells_AnnData.varp = AnnData.varp.copy()
+    metacells_AnnData.var = adata.var.copy()
+    metacells_AnnData.varp = adata.varp.copy()
 
     return metacells_AnnData
 
