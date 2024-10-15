@@ -47,7 +47,7 @@ line_length = 100
 multi_line_output = 3
 
 [build-system]
-requires = ["setuptools>=0.64", "numpy<2.0", "cython"]
+requires = ["wheel", "setuptools>=0.64", "numpy<2.0", "cython"]
 build-backend = "setuptools.build_meta"
 
 [tool.cython]
