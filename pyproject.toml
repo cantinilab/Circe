@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "circe-py"
-version = "0.3.2"
+version = "0.3.3"
 description = "Circe: Package for building co-accessibility networks from ATAC-seq data."
 authors = ["Rémi Trimbour <remi.trimbour@pasteur.fr>"]
 packages = [{include = "circe"}]

@@ -33,7 +33,7 @@ extensions = [
 
 setup(
     name='circe',
-    version='0.3.2',
+    version='0.3.3',
     description='',
     long_description='None',
     author='Remi-Trimbour',
