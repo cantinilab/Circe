@@ -57,10 +57,11 @@ def compute_metacells(
     """
 
     lsi(adata)
-    key_dim_reduction = f"X_{dim_reduction}"
     if dim_reduction == 'lsi':
+        key_dim_reduction = f"X_{dim_reduction}"
         sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
     elif dim_reduction in adata.obsm.keys():
+        key_dim_reduction = dim_reduction
         print("Using adata.obsm['{}'] to identify neighboring cells".format(dim_reduction))
         sc.pp.neighbors(adata, use_rep=dim_reduction, metric=metric)
     else:
