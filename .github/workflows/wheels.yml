@@ -20,7 +20,9 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Build SDist
-        run: python -m build
+        run: |
+          pip install build
+          python -m build
 
       - name: Check metadata
         run: python -m twine check dist/*
@@ -44,7 +46,9 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Build SDist
-        run: python -m build
+        run: |
+          pip install build
+          python -m build
       - uses: pypa/cibuildwheel@v2.21
         env:
           CIBW_ARCHS_MACOS: auto universal2
