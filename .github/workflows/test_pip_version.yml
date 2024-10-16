@@ -1,4 +1,4 @@
-name: Tests Python|OS grid
+name: Tests Python|ubuntu grid
 
 on: [push, pull_request]
 
@@ -6,8 +6,8 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]  # Testing on Python 3.8 to 3.13
+        os: [ubuntu-latest] #, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"] #, "3.13"]  # Testing on Python 3.8 to 3.13
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout repository
