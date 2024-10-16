@@ -691,7 +691,7 @@ def average_alpha(
                       )
                     )[0]
 
-                if 0 < len(idx) < 200:
+                if 1 < len(idx) <= max_elements:
                     idx_list.append(idx)
 
     if len(idx_list) < n_samples_maxtry:
@@ -1042,8 +1042,7 @@ def sliding_graphical_lasso(
                 chromosome, (1 if k == 0 else 2)),):
                 end = start + window_size
                 # Get global indices of regions in the window
-                idxs.append(
-                    np.where(
+                idx = np.where(
                         (anndata.var["chromosome"] == chromosome)
                         & (
                             ((anndata.var["start"] > start)
@@ -1053,7 +1052,8 @@ def sliding_graphical_lasso(
                              & (anndata.var["end"] < end-1))
                           )
                         )[0]
-                )
+                if 1 < len(idx) <= max_elements:
+                    idxs.append(idx)
                 #subanndata_Xs.append(anndata[:, idxs[-1]].X)
                 #subanndata_vars.append(anndata[:, idxs[-1]].var)
                 #submap_indices = {k: v for k, v in map_indices.items() if k in subanndata_vars[-1].index.values}
