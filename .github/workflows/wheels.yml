@@ -13,11 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v5
+
+      - name: Install LAPACK (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Build SDist
-        run: pipx run build --sdist
+        run: python -m build
 
       - name: Check metadata
-        run: pipx run twine check dist/*
+        run: python -m twine check dist/*
 
       - uses: actions/upload-artifact@v4
         with:
