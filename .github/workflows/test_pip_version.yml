@@ -37,5 +37,5 @@ jobs:
     - name: Run tests
       run: |
         python -m pip install pytest  # Install pytest or any other test framework
-        cd tests
         python -m pytest ../
+      working-directory: ./tests
