@@ -3,7 +3,7 @@ import pandas as pd
 from rich.progress import track, Progress
 import time
 import scipy as sp
-from . import quic_graph_lasso
+from circe import quic_graph_lasso
 from functools import reduce
 import warnings
 from typing import Union

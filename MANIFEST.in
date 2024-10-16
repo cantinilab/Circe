@@ -1,3 +1,4 @@
-include circe/pyquic/*.pyx
-include circe/pyquic/*.C
-include circe/pyquic/*.h
+include pyquic_ext/*.pyx
+include pyquic_ext/*.C
+include pyquic_ext/*.h
+include setup.py

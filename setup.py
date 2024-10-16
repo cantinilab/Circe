@@ -25,22 +25,22 @@ class BuildExt(build_ext):
 extensions = [
     Extension(
         "circe.pyquic",
-        sources=["circe/pyquic_ext/QUIC.C", "circe/pyquic_ext/pyquic.pyx"],
-        include_dirs=[numpy.get_include(), "circe/pyquic_ext"],
+        sources=["pyquic_ext/QUIC.C", "pyquic_ext/pyquic.pyx"],
+        include_dirs=[numpy.get_include(), "pyquic_ext"],
         language="c++",
     ),
 ]
 
 setup(
-    name='circe',
-    version='0.3.3',
-    description='',
-    long_description='None',
+    name='circe-py',
+    version='0.3.4',
+    description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
+    long_description="None",
     author='Remi-Trimbour',
     author_email='remi.trimbour@pasteur.fr',
     maintainer='Remi-Trimbour',
     maintainer_email='remi.trimbour@gmail.com',
-    url='None',
+    url='https://github.com/cantinilab/circe',
     packages=find_packages(),
     package_data={'': ['*']},
     python_requires='>=3.8,<4.0',
