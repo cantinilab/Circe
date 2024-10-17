@@ -27,6 +27,7 @@ extensions = [
         "circe.pyquic",
         sources=["pyquic_ext/QUIC.C", "pyquic_ext/pyquic.pyx"],
         include_dirs=[numpy.get_include(), "pyquic_ext"],
+        libraries=['lapack', 'blas'],
         language="c++",
     ),
 ]
@@ -47,6 +48,7 @@ setup(
     ext_modules=cythonize(extensions, language_level=3),
     cmdclass={'build_ext': BuildExt},
     include_dirs=[numpy.get_include()],
+    options={'bdist_wheel':{'universal':True}},
     install_requires=[
         'Cython',
         'numpy<2.0.0',
