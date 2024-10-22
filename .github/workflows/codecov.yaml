@@ -9,7 +9,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install LAPACK
-        run: sudo apt-get update && sudo apt-get install -y liblapack-dev
+        run: |
+          sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
@@ -22,7 +23,7 @@ jobs:
           pip install .[full]
       - name: Run tests and collect coverage
         run: |
-          pip install -e .
+          pip install -e . --config-settings editable_mode=compat
           pip install pytest-cov
           python -c 'import os; os.chdir("tests/"); import circe.pyquic; print(circe.pyquic)'
           pytest -s --cov "circe"
