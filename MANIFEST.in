@@ -1,0 +1,4 @@
+include pyquic_ext/*.pyx
+include pyquic_ext/*.C
+include pyquic_ext/*.h
+include setup.py

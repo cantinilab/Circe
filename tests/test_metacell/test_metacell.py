@@ -37,3 +37,7 @@ def test_metacells():
     # Compute metacells from sparse matrix
     atac.X = sp.sparse.csr_matrix(atac.X)
     circe.metacells.compute_metacells(atac, k=10, method="sum", projection=None)
+
+
+def subset_regions():
+    circe.metacells.subset_regions(atac, chr='chr1', start=1, end=1000)

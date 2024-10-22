@@ -19,6 +19,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install flake8 pytest pre-commit
+          pip install circe-py
           pip install .[full]
       - name: Run tests and collect coverage
         run: |

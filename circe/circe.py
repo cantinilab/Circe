@@ -3,10 +3,12 @@ import pandas as pd
 from rich.progress import track, Progress
 import time
 import scipy as sp
-from . import quic_graph_lasso
+from circe import quic_graph_lasso
 from functools import reduce
 import warnings
 from typing import Union
+from joblib import Parallel, delayed
+
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
     message=r".*Reordering categories will always return a new Categorical object.*")
@@ -188,6 +190,7 @@ def compute_atac_network(
     n_samples_maxtry=500,
     key="atac_network",
     seed=42,
+    njobs=1,
     verbose=False
 ):
     """
@@ -274,6 +277,7 @@ def compute_atac_network(
         n_samples=n_samples,
         n_samples_maxtry=n_samples_maxtry,
         seed=seed,
+        njobs=njobs,
         verbose=verbose
     )
 
@@ -406,6 +410,31 @@ def get_distances_regions(anndata):
     distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
     return distance
 
+def get_distances_regions_from_dataframe(df):
+    """
+    Get distances between regions, var_names from an anndata object.
+    'add_region_infos' should be run before this function.
+
+    Parameters
+    ----------
+    anndata : anndata object
+        anndata object with var_names as region names.
+
+    Returns
+    -------
+    distance : np.array
+        Distance between regions.
+    """
+
+    # Store start and end positions in two arrays
+    m, n = np.meshgrid(
+        (df["end"].values + df["start"].values)/2,
+        (df["end"].values + df["start"].values)/2)
+    # Get distance between start of region m and end of region n
+    distance = np.abs(m - n)
+    # Replace diagonal by 1
+    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
+    return distance
 
 def local_alpha(
     X,
@@ -662,7 +691,7 @@ def average_alpha(
                       )
                     )[0]
 
-                if 0 < len(idx) < 200:
+                if 1 < len(idx) <= max_elements:
                     idx_list.append(idx)
 
     if len(idx_list) < n_samples_maxtry:
@@ -736,6 +765,33 @@ def average_alpha(
     return alpha
 
 
+def get_distances_regions_from_dataframe(df):
+    """
+    Get distances between regions, var_names from a dataframe object.
+    'add_region_infos' should be run before this function.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Dataframe with var_names as region names.
+
+    Returns
+    -------
+    distance : np.array
+        Distance between regions.
+    """
+
+    # Store start and end positions in two arrays
+    m, n = np.meshgrid(
+        (df["end"].values + df["start"].values)/2,
+        (df["end"].values + df["start"].values)/2)
+    # Get distance between start of region m and end of region n
+    distance = np.abs(m - n)
+    # Replace diagonal by 1
+    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
+    return distance
+
+
 def sliding_graphical_lasso(
     anndata,
     window_size: Union[int, None] = None,
@@ -750,7 +806,8 @@ def sliding_graphical_lasso(
     n_samples_maxtry=500,
     init_method="precomputed",
     verbose=False,
-    seed=42
+    seed=42,
+    njobs=1
 ):
     """
     Estimate co-accessibility scores between regions penalized on distance.
@@ -939,7 +996,6 @@ def sliding_graphical_lasso(
         max_elements=max_elements,
         init_method=init_method,
         seed=seed,
-        verbose=verbose
     )
     if verbose:
         print("Alpha coefficient calculated : {}".format(alpha))
@@ -960,16 +1016,14 @@ def sliding_graphical_lasso(
         slide_results["idy"] = np.array([])
         idx_["window_" + str(k)] = np.array([])
         idy_["window_" + str(k)] = np.array([])
+
 #        if k == 0:
 #            print("Starting to process chromosomes : {}".format(
 #                anndata.var["chromosome"].unique()))
 #        else:
 #            print("Finishing to process chromosomes : {}".format(
 #                anndata.var["chromosome"].unique()))
-        for chromosome in track(
-            anndata.var["chromosome"].unique(),
-            description="Calculating co-accessibility: {}/2".format(
-                1 if k == 0 else 2),):
+        for chromosome in anndata.var["chromosome"].unique():
             # Get start positions of windows
             window_starts = [
                 i
@@ -981,121 +1035,155 @@ def sliding_graphical_lasso(
                 )
             ]
 
-            for start in window_starts:
+            idxs, subanndata_Xs, subanndata_vars = [], [], []
+            for start in track(
+                window_starts,
+                description="Calculating co-accessibility: {}, {}/2".format(
+                chromosome, (1 if k == 0 else 2)),):
                 end = start + window_size
                 # Get global indices of regions in the window
                 idx = np.where(
-                    (anndata.var["chromosome"] == chromosome)
-                    & (
-                        ((anndata.var["start"] > start)
-                         & (anndata.var["start"] < end-1))
-                        |
-                        ((anndata.var["end"] > start)
-                         & (anndata.var["end"] < end-1))
-                      )
-                    )[0]
-
-                # Add to the list of all regions used to know how many
-                # times each region is used
+                        (anndata.var["chromosome"] == chromosome)
+                        & (
+                            ((anndata.var["start"] > start)
+                             & (anndata.var["start"] < end-1))
+                            |
+                            ((anndata.var["end"] > start)
+                             & (anndata.var["end"] < end-1))
+                          )
+                        )[0]
+                if 1 < len(idx) <= max_elements:
+                    idxs.append(idx)
+                #subanndata_Xs.append(anndata[:, idxs[-1]].X)
+                #subanndata_vars.append(anndata[:, idxs[-1]].var)
+                #submap_indices = {k: v for k, v in map_indices.items() if k in subanndata_vars[-1].index.values}
+                
                 x_, y_ = \
-                    np.meshgrid(idx, idx)
+                np.meshgrid(idxs[-1], idxs[-1])
                 idx_["window_" + str(k)], idy_["window_" + str(k)] = \
                     np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
                     np.concatenate([idy_["window_" + str(k)], y_.flatten()])
 
-                # already global ?
-                # Get global indices of regions in the window
-                # idx = [map_indices[i] for i in regions_list[idx]]
+            if idxs == []:
+                continue
 
-                if idx is None or len(idx) <= 1:
-                    # print("Less than two regions in window")
-                    continue
-
-                # Get submatrix
-                if sp.sparse.issparse(anndata.X):
-                    window_accessibility = anndata.X[:, idx].toarray()
-                    window_scores = np.cov(window_accessibility, rowvar=False)
-                    window_scores = window_scores + 1e-4 * np.eye(
-                        len(window_scores))
-
-                else:
-                    window_accessibility = anndata.X[:, idx].copy()
-                    window_scores = np.cov(window_accessibility, rowvar=False)
-                    window_scores = window_scores + 1e-4 * np.eye(
-                        len(window_scores))
-
-                distance = get_distances_regions(anndata[:, idx])
-
-                # Test if distance is negative
-                if np.any(distance < 0):
-                    raise ValueError(
-                        """
-                        Distance between regions should be
-                        positive. You might have overlapping
-                        regions.
-                        """
-                    )
-
-                window_penalties = calc_penalty(
-                    alpha,
-                    distance=distance,
-                    unit_distance=unit_distance)
-
-                # Initiating graphical lasso
-                graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
-                    init_method=init_method,
-                    lam=window_penalties,
-                    tol=1e-4,
-                    max_iter=1e4,
-                    auto_scale=False,
-                )
-
-                # Fit graphical lasso
-                graph_lasso_model.fit(window_scores)
-
-                # Names of regions in the window
-                window_region_names = anndata.var_names[idx].copy()
-
-                # Transform to correlation matrix
-                scores = cov_to_corr(graph_lasso_model.covariance_)
-
-                # convert to sparse matrix the results
-                corrected_scores = sp.sparse.coo_matrix(
-                    scores)
-
-                # Convert corrected_scores column
-                # and row indices to global indices
-                idx = [
-                    map_indices[name]
-                    for name in window_region_names[corrected_scores.row]
-                ]
-                idy = [
-                    map_indices[name]
-                    for name in window_region_names[corrected_scores.col]
-                ]
-
-                # Add the "sub" resuls to the global sparse matrix
-                slide_results["scores"] = np.concatenate(
-                    [slide_results["scores"], corrected_scores.data]
-                )
-                slide_results["idx"] = np.concatenate(
-                    [slide_results["idx"], idx]
-                    )
-                slide_results["idy"] = np.concatenate(
-                    [slide_results["idy"], idy]
-                    )
-
-            # Create sparse matrix
-            results["window_" + str(k)] = sp.sparse.coo_matrix(
-                (slide_results["scores"],
-                 (slide_results["idx"], slide_results["idy"])),
-                shape=(anndata.X.shape[1], anndata.X.shape[1]),
-            )
-
+            # Use joblib.Parallel to run the function in parallel, no need to iterate over `b` unless it's required for something else
+            parallel_lasso_results = Parallel(n_jobs=njobs)(delayed(parallel_lasso_call)(
+                idx, anndata[:, idx].var, anndata[:, idx].X, alpha, unit_distance, init_method, map_indices) for idx in idxs)
+            
+            # Unpack the results and concatenate the arrays
+            scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
+            
+            # Concatenate the lists into the final result arrays
+            slide_results = {
+                "scores": np.concatenate([slide_results["scores"], *scores_list]),
+                "idx": np.concatenate([slide_results["idx"], *idx_list]),
+                "idy": np.concatenate([slide_results["idy"], *idy_list])
+            }
+        # Create sparse matrix
+        results["window_" + str(k)] = sp.sparse.coo_matrix(
+            (slide_results["scores"],
+                (slide_results["idx"], slide_results["idy"])),
+            shape=(anndata.X.shape[1], anndata.X.shape[1]),
+        )
     results = reconcile(results, idx_, idy_)
 
     print("Done !")
     return results
+
+
+# Define the function call to be parallelized
+def parallel_lasso_call(idx, subanndata_var, subanndata_X, alpha, unit_distance, init_method, submap_indices):
+    corrected_scores, idx, idy = single_graphical_lasso(
+        idx,
+        subanndata_var,
+        subanndata_X,
+        alpha,
+        unit_distance,
+        init_method,
+        submap_indices
+    )
+    return corrected_scores, idx, idy
+
+
+def single_graphical_lasso(idx, anndata_var, anndata_X, alpha, unit_distance, init_method, map_indices):
+    # Add to the list of all regions used to know how many
+    # times each region is used
+    
+
+    # already global ?
+    # Get global indices of regions in the window
+    # idx = [map_indices[i] for i in regions_list[idx]]
+
+    if idx is None or len(idx) <= 1:
+        # print("Less than two regions in window")
+        return np.array([]), np.array([]), np.array([])
+
+    # Get submatrix
+    if sp.sparse.issparse(anndata_X):
+        window_accessibility = anndata_X.toarray()
+        window_scores = np.cov(window_accessibility, rowvar=False)
+        window_scores = window_scores + 1e-4 * np.eye(
+            len(window_scores))
+
+    else:
+        window_accessibility = anndata_X.copy()
+        window_scores = np.cov(window_accessibility, rowvar=False)
+        window_scores = window_scores + 1e-4 * np.eye(
+            len(window_scores))
+
+    
+    distance = get_distances_regions_from_dataframe(anndata_var)
+
+    # Test if distance is negative
+    if np.any(distance < 0):
+        raise ValueError(
+            """
+            Distance between regions should be
+            positive. You might have overlapping
+            regions.
+            """
+        )
+
+    window_penalties = calc_penalty(
+        alpha,
+        distance=distance,
+        unit_distance=unit_distance)
+
+    # Initiating graphical lasso
+    graph_lasso_model = quic_graph_lasso.QuicGraphicalLasso(
+        init_method=init_method,
+        lam=window_penalties,
+        tol=1e-4,
+        max_iter=1e4,
+        auto_scale=False,
+    )
+
+    # Fit graphical lasso
+    graph_lasso_model.fit(window_scores)
+
+    # Names of regions in the window
+    window_region_names = anndata_var.index.values.copy()
+
+    # Transform to correlation matrix
+    scores = cov_to_corr(graph_lasso_model.covariance_)
+
+    # convert to sparse matrix the results
+    corrected_scores = sp.sparse.coo_matrix(
+        scores)
+
+    # Convert corrected_scores column
+    # and row indices to global indices
+    idx = [
+        map_indices[name]
+        for name in window_region_names[corrected_scores.row]
+    ]
+    idy = [
+        map_indices[name]
+        for name in window_region_names[corrected_scores.col]
+    ]
+
+    return corrected_scores.data, idx, idy
 
 
 def reconcile(

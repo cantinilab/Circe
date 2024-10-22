@@ -15,7 +15,7 @@ from numpy.testing import assert_array_almost_equal
 from joblib import Parallel, delayed
 from sklearn.model_selection import cross_val_score, RepeatedKFold
 
-from . import pyquic
+import circe.pyquic
 from .inverse_covariance import (
     InverseCovarianceEstimator,
     _init_coefs,
@@ -126,7 +126,7 @@ def quic(
     cputime = np.zeros(optSize)
     dGap = np.zeros(optSize)
     iters = np.zeros(iterSize, dtype=np.uint32)
-    pyquic.quic(
+    circe.pyquic.quic(
         quic_mode,
         Sn,
         S,
