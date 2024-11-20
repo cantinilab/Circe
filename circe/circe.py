@@ -19,38 +19,32 @@ warnings.filterwarnings(
 
 def cov_to_corr(cov_matrix, tol=1e-20):
     """
-    Convert covariance matrix to correlation matrix,
-    with a tolerance for diagonal elements.
+    Optimized version: Convert covariance matrix to correlation matrix,
+    with a tolerance for small diagonal elements.
 
     Parameters
     ----------
     cov_matrix : np.array
         Covariance matrix.
     tol : float, optional
-        Tolerance for diagonal elements. The default is 1e-20.
+        Tolerance for diagonal elements. Default is 1e-20.
 
     Returns
     -------
     correlation_matrix : np.array
         Correlation matrix.
     """
-    # Diagonal elements (variances)
+    # Diagonal elements (standard deviations)
     d = np.sqrt(cov_matrix.diagonal())
 
-    # Apply tolerance: if a variance is less than tol,
-    # use it directly instead of normalizing to 1.
-    # This avoids division by very small numbers
-    # which can lead to numerical instability.
-    d_tol = np.where(d < tol, cov_matrix.diagonal(), d)
+    # Adjust small values in d to avoid instability
+    d[d < tol] = 1
 
-    # Outer product of the adjusted standard deviations vector
-    d_matrix = np.outer(d_tol, d_tol)
+    # Calculate correlation matrix using broadcasting for efficiency
+    correlation_matrix = cov_matrix / d[:, None] / d[None, :]
 
-    # Element-wise division of the covariance matrix by the d_matrix
-    correlation_matrix = cov_matrix / d_matrix
-
-    # Ensure the diagonal elements are 1 or the original diagonal value if it's below tolerance
-    np.fill_diagonal(correlation_matrix, np.where(d < tol, cov_matrix.diagonal(), 1))
+    # Set diagonal to 1
+    np.fill_diagonal(correlation_matrix, 1)
 
     return correlation_matrix
 
