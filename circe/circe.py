@@ -21,7 +21,7 @@ def cov_to_corr(cov_matrix, tol=1e-20):
     """
     Convert covariance matrix to correlation matrix,
     with a tolerance for diagonal elements.
-    
+
     Parameters
     ----------
     cov_matrix : np.array
@@ -648,7 +648,7 @@ def average_alpha(
     """
     start_slidings = [0, int(window_size / 2)]
 
-    idx_list = []
+    window_starts = []
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
@@ -669,41 +669,42 @@ def average_alpha(
                     chromosome_size = anndata.var["end"][
                         anndata.var["chromosome"] == chromosome].max()
             # Get start positions of windows
-            window_starts = [
-                i
+            chr_window_starts = [
+                (chromosome, i)
                 for i in range(
                     k,
                     chromosome_size,
                     window_size,
                 )
             ]
-            for start in window_starts:
-                end = start + window_size
-                # Get global indices of regions in the window
-                idx = np.where(
-                    (anndata.var["chromosome"] == chromosome)
-                    & (
-                        ((anndata.var["start"] > start)
-                         & (anndata.var["start"] < end-1))
-                        |
-                        ((anndata.var["end"] > start)
-                         & (anndata.var["end"] < end-1))
-                      )
-                    )[0]
+            window_starts += chr_window_starts
 
-                if 1 < len(idx) <= max_elements:
-                    idx_list.append(idx)
+    random_windows = []
+    rng = np.random.default_rng(seed=seed)
+    rng.shuffle(window_starts)
+    while len(random_windows) < n_samples_maxtry:
+        n_window_to_choose = n_samples_maxtry-len(random_windows)
+        idx_windows = window_starts[0:n_window_to_choose]
+        if len(idx_windows) == 0:
+            break
+        window_starts = window_starts[n_window_to_choose:]
 
-    if len(idx_list) < n_samples_maxtry:
-        random_windows = idx_list
-    else:
-        rng = np.random.default_rng(seed=seed)
-        idx_list_indices = rng.choice(
-            len(idx_list),
-            n_samples_maxtry,
-            replace=False,
-        )
-        random_windows = [idx_list[i] for i in idx_list_indices]
+        for chromosome, start in idx_windows:
+            end = start + window_size
+            # Get global indices of regions in the window
+            idx = np.where(
+                (anndata.var["chromosome"] == chromosome)
+                & (
+                    ((anndata.var["start"] > start)
+                     & (anndata.var["start"] < end-1))
+                    |
+                    ((anndata.var["end"] > start)
+                     & (anndata.var["end"] < end-1))
+                  )
+                )[0]
+
+            if 0 < len(idx) < 200:
+                random_windows.append(idx)
 
     # While loop to calculate alpha until n_samples measures are obtained
     with Progress() as progress:
@@ -763,6 +764,7 @@ def average_alpha(
     # Calculate average alpha
     alpha = np.mean(alpha_list)
     return alpha
+
 
 
 def get_distances_regions_from_dataframe(df):
