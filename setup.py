@@ -57,6 +57,8 @@ setup(
         'joblib>=1.1.0',
         'scanpy>=1.8.1',
         'rich>=10.12.0',
+        'dask',
+        'distributed'
     ],
     classifiers=[
         # Add appropriate classifiers
