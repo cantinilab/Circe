@@ -11,7 +11,7 @@ def compute_metacells(
         adata,
         k=50,
         max_overlap_metacells=0.9,
-        max_metacells=5000,
+        max_metacells=None,
         dim_reduction='lsi',
         projection=None,
         method='mean',
@@ -37,7 +37,7 @@ def compute_metacells(
         The default is 0.9.
     max_metacells : int, optional
         Maximum number of metacells to compute.
-        The default is 5000.
+        The default is None, which means a metacell is created and centered on each cell.
     dim_reduction : str, optional
         Dimensionality reduction method to use to compute metacells.
         The default is 'lsi'.
@@ -79,6 +79,8 @@ def compute_metacells(
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm[key_projection])
     distances, indices = nbrs.kneighbors(adata.obsm[key_projection])
     indices = [set(indice) for indice in indices]
+    if max_metacells is None:
+        max_metacells = len(indices)
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
     metacells = [indices[0]]
