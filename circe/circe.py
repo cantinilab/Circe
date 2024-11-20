@@ -83,19 +83,19 @@ def subset_region(adata, chromosome, start, end):
         )
 
     # subset per chromosome
-    anndata = adata[:, adata.var['chromosome'] == chromosome]
+    adata = adata[:, adata.var['chromosome'] == chromosome]
     # subset on region window
-    anndata = anndata[:, ((start <= anndata.var['start'])
-                          & (anndata.var['start'] <= end)) +
-                         ((start <= anndata.var['end'])
-                          & (anndata.var['end'] <= end))]
+    adata = adata[:, ((start <= adata.var['start'])
+                          & (adata.var['start'] <= end)) +
+                         ((start <= adata.var['end'])
+                          & (adata.var['end'] <= end))]
 
-    return anndata
+    return adata
 
 
-def add_region_infos(anndata, sep=("_", "_"), inplace=False):
+def add_region_infos(adata, sep=("_", "_"), inplace=False):
     """
-    Get region informations from the var_names of anndata object.
+    Get region informations from the var_names of adata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
                              'start' : 12345,
                              'end' : 12346
@@ -106,22 +106,22 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     sep : tuple, optional
         Separator of region names. The default is ('_', '_').
 
     Returns
     -------
-    anndata : anndata object
+    adata : anndata object
         anndata object with region informations in var.
     """
     # Check if user wants to modify anndata inplace or return a copy
     if inplace:
         pass
     else:
-        anndata = anndata.copy()
-    regions_list = anndata.var_names
+        adata = adata.copy()
+    regions_list = adata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
     regions_list = regions_list.str.replace(sep[1], sep[0])
@@ -143,7 +143,7 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
 
     # Extract region informations from var_names
     region_infos = pd.DataFrame(
-        regions_list, index=anndata.var_names,
+        regions_list, index=adata.var_names,
         columns=["chromosome", "start", "end"]
     )
 
@@ -152,28 +152,28 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
     region_infos["end"] = region_infos["end"].astype(int)
 
     # Add region informations to var
-    anndata.var["chromosome"] = region_infos["chromosome"]
-    anndata.var["start"] = region_infos["start"]
-    anndata.var["end"] = region_infos["end"]
+    adata.var["chromosome"] = region_infos["chromosome"]
+    adata.var["start"] = region_infos["start"]
+    adata.var["end"] = region_infos["end"]
 
-    anndata = sort_regions(anndata)
+    adata = sort_regions(adata)
     # Return anndata if inplace is False
     if inplace:
         pass
     else:
-        return anndata
+        return adata
 
 
-def sort_regions(anndata):
+def sort_regions(adata):
     """
     Sort regions by chromosome and start position.
     """
-    ord_index = anndata.var.sort_values(["chromosome", "start"]).index
-    return anndata[:, ord_index]
+    ord_index = adata.var.sort_values(["chromosome", "start"]).index
+    return adata[:, ord_index]
 
 
 def compute_atac_network(
-    anndata,
+    adata,
     window_size=None,
     unit_distance=1000,
     distance_constraint=None,
@@ -211,7 +211,7 @@ def compute_atac_network(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     window_size : int, optional
         Size of sliding window, in which co-accessible regions can be found.
@@ -260,8 +260,8 @@ def compute_atac_network(
     None.
     """
 
-    anndata.varp[key] = sliding_graphical_lasso(
-        anndata=anndata,
+    adata.varp[key] = sliding_graphical_lasso(
+        adata=adata,
         window_size=window_size,
         unit_distance=unit_distance,
         distance_constraint=distance_constraint,
@@ -279,7 +279,7 @@ def compute_atac_network(
 
 
 def extract_atac_links(
-    anndata,
+    adata,
     key=None,
     columns=['Peak1', 'Peak2', 'score']
 ):
@@ -290,7 +290,7 @@ def extract_atac_links(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as variable names.
     key : str, optional
         key from adata.varp. The default is None.
@@ -308,42 +308,42 @@ def extract_atac_links(
 
     if key is None:  # if only one key (I guess often), no need to precise key
         # maybe replace by a default one later
-        if len(list(anndata.varp)) == 1:
-            key = list(anndata.varp)[0]
+        if len(list(adata.varp)) == 1:
+            key = list(adata.varp)[0]
         else:
             raise KeyError(
                 "Several keys were found in adata.varp: {}, ".format(
-                    list(anndata.varp)) +
+                    list(adata.varp)) +
                 "please precise which keyword use (arg 'key'))"
             )
     else:
-        if key not in list(anndata.varp):
+        if key not in list(adata.varp):
             raise KeyError("The key you provided ({}) is not in adata.varp: {}"
-                           .format(key, list(anndata.varp))
+                           .format(key, list(adata.varp))
                            )
 
     # Convert to COO format if needed
     converted = False
-    if isinstance(anndata.varp[key], sp.sparse.csr_matrix):
-        anndata.varp[key] = anndata.varp[key].tocoo()
+    if isinstance(adata.varp[key], sp.sparse.csr_matrix):
+        adata.varp[key] = adata.varp[key].tocoo()
         converted = True
 
     links = pd.DataFrame(
         [(row, col, data) for (row, col, data) in zip(
-            [i for i in anndata.varp[key].row],
-            [i for i in anndata.varp[key].col],
-            anndata.varp[key].data)
+            [i for i in adata.varp[key].row],
+            [i for i in adata.varp[key].col],
+            adata.varp[key].data)
             if row < col],
         columns=columns
         ).sort_values(by=columns[2], ascending=False)
 
-    links[columns[0]] = [anndata.var_names[i] for i in links[columns[0]]]
-    links[columns[1]] = [anndata.var_names[i] for i in links[columns[1]]]
+    links[columns[0]] = [adata.var_names[i] for i in links[columns[0]]]
+    links[columns[1]] = [adata.var_names[i] for i in links[columns[1]]]
     links = links.reset_index(drop=True)
 
     # Convert back to CSR format if it was converted
     if converted:
-        anndata.varp[key] = anndata.varp[key].tocsr()
+        adata.varp[key] = adata.varp[key].tocsr()
 
     return links
 
@@ -380,14 +380,14 @@ def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
     return penalties
 
 
-def get_distances_regions(anndata):
+def get_distances_regions(adata):
     """
     Get distances between regions, var_names from an anndata object.
     'add_region_infos' should be run before this function.
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
 
     Returns
@@ -398,8 +398,8 @@ def get_distances_regions(anndata):
 
     # Store start and end positions in two arrays
     m, n = np.meshgrid(
-        (anndata.var["end"].values + anndata.var["start"].values)/2,
-        (anndata.var["end"].values + anndata.var["start"].values)/2)
+        (adata.var["end"].values + adata.var["start"].values)/2,
+        (adata.var["end"].values + adata.var["start"].values)/2)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
@@ -541,7 +541,7 @@ def local_alpha(
 
 
 def average_alpha(
-    anndata,
+    adata,
     window_size=500000,
     unit_distance=1000,
     n_samples=100,
@@ -567,7 +567,7 @@ def average_alpha(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
@@ -625,10 +625,10 @@ def average_alpha(
         slide_results["scores"] = np.array([])
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
-        for chromosome in anndata.var["chromosome"].unique():
+        for chromosome in adata.var["chromosome"].unique():
             if chromosomes_sizes is None:
-                chromosome_size = anndata.var["end"][
-                    anndata.var["chromosome"] == chromosome].max()
+                chromosome_size = adata.var["end"][
+                    adata.var["chromosome"] == chromosome].max()
             else:
                 try:
                     chromosome_size = chromosomes_sizes[chromosome]
@@ -637,8 +637,8 @@ def average_alpha(
                         "{} not found as key in chromosome_size, ".format(
                             chromosome) +
                         " using max end position.")
-                    chromosome_size = anndata.var["end"][
-                        anndata.var["chromosome"] == chromosome].max()
+                    chromosome_size = adata.var["end"][
+                        adata.var["chromosome"] == chromosome].max()
             # Get start positions of windows
             chr_window_starts = [
                 (chromosome, i)
@@ -664,13 +664,13 @@ def average_alpha(
             end = start + window_size
             # Get global indices of regions in the window
             idx = np.where(
-                (anndata.var["chromosome"] == chromosome)
+                (adata.var["chromosome"] == chromosome)
                 & (
-                    ((anndata.var["start"] > start)
-                     & (anndata.var["start"] < end-1))
+                    ((adata.var["start"] > start)
+                     & (adata.var["start"] < end-1))
                     |
-                    ((anndata.var["end"] > start)
-                     & (anndata.var["end"] < end-1))
+                    ((adata.var["end"] > start)
+                     & (adata.var["end"] < end-1))
                   )
                 )[0]
 
@@ -687,12 +687,12 @@ def average_alpha(
             for window in random_windows:
                 # Calculate distances between regions
                 distances = get_distances_regions(
-                    anndata[:, window]
+                    adata[:, window]
                     )
 
                 # Calculate individual alpha
                 alpha = local_alpha(
-                    X=anndata[:, window].X,
+                    X=adata[:, window].X,
                     distances=distances,
                     maxit=max_alpha_iteration,
                     unit_distance=unit_distance,
