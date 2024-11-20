@@ -187,6 +187,7 @@ def compute_atac_network(
     key="atac_network",
     seed=42,
     njobs=1,
+    threads_per_worker=1,
     verbose=False
 ):
     """
@@ -252,6 +253,10 @@ def compute_atac_network(
         Key to store the results in adata.varp. The default is "atac_network".
     seed : int, optional
         Seed for random number generator. The default is 42.
+    njobs : int, optional
+        Number of jobs to run in parallel. The default is 1.
+    threads_per_worker : int, optional
+        Number of threads per worker. The default is 1.
     verbose : bool, optional
         If True, will print additional information. The default is False.
 
@@ -842,6 +847,10 @@ def sliding_graphical_lasso(
         Print alpha coefficient. The default is False.
     seed : int, optional
         Seed for random number generator. The default is 42.
+    njobs : int, optional
+        Number of jobs to run in parallel. The default is 1.
+    threads_per_worker : int, optional
+        Number of threads per worker. The default is 1.
 
     Returns
     -------
