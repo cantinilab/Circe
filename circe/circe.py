@@ -7,7 +7,9 @@ from circe import quic_graph_lasso
 from functools import reduce
 import warnings
 from typing import Union
-from joblib import Parallel, delayed
+from dask.distributed import LocalCluster, Client
+from joblib import Parallel, delayed, parallel_config
+import tqdm
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
@@ -404,31 +406,6 @@ def get_distances_regions(anndata):
     distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
     return distance
 
-def get_distances_regions_from_dataframe(df):
-    """
-    Get distances between regions, var_names from an anndata object.
-    'add_region_infos' should be run before this function.
-
-    Parameters
-    ----------
-    anndata : anndata object
-        anndata object with var_names as region names.
-
-    Returns
-    -------
-    distance : np.array
-        Distance between regions.
-    """
-
-    # Store start and end positions in two arrays
-    m, n = np.meshgrid(
-        (df["end"].values + df["start"].values)/2,
-        (df["end"].values + df["start"].values)/2)
-    # Get distance between start of region m and end of region n
-    distance = np.abs(m - n)
-    # Replace diagonal by 1
-    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
-    return distance
 
 def local_alpha(
     X,
@@ -760,7 +737,6 @@ def average_alpha(
     return alpha
 
 
-
 def get_distances_regions_from_dataframe(df):
     """
     Get distances between regions, var_names from a dataframe object.
@@ -789,7 +765,7 @@ def get_distances_regions_from_dataframe(df):
 
 
 def sliding_graphical_lasso(
-    anndata,
+    adata,
     window_size: Union[int, None] = None,
     unit_distance=1_000,
     distance_constraint=None,
@@ -803,7 +779,8 @@ def sliding_graphical_lasso(
     init_method="precomputed",
     verbose=False,
     seed=42,
-    njobs=1
+    njobs=1,
+    threads_per_worker=1
 ):
     """
     Estimate co-accessibility scores between regions penalized on distance.
@@ -820,8 +797,8 @@ def sliding_graphical_lasso(
 
     Parameters
     ----------
-    anndata : anndata object
-        anndata object with var_names as region names.
+    adata : AnnData object
+        AnnData object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
         The default is None and will be set to 500000 if organism is None.
@@ -898,10 +875,11 @@ def sliding_graphical_lasso(
             else:
                 warnings.warn(
                     """
-                    window_size is not None, using the value passed as argument.
+                    window_size is not None, using the value passed as param.
                     """, UserWarning)
             if distance_constraint is None:
-                distance_constraint = organism_values[organism]["distance_constraint"]
+                distance_constraint = organism_values[organism][
+                    "distance_constraint"]
             else:
                 warnings.warn(
                     """
@@ -937,6 +915,7 @@ def sliding_graphical_lasso(
             none_values.append("s")
             s = organism_values[default_organism]["s"]
         if none_values:
+            citation = "https://cole-trapnell-lab.github.io/cicero-release/docs_m3/#important-considerations-for-non-human-data"
             warnings.warn(
                 """
                 No organism, nor value passed for the parameters: {0},
@@ -951,9 +930,10 @@ def sliding_graphical_lasso(
                 You can check how to define them in {2}.
                 """.format(
                     none_values,
-                    {key: value for key, value in organism_values["human"].items()
+                    {key: value for key, value in organism_values[
+                        "human"].items()
                         if key in none_values},
-                    "/{citation/}"
+                    citation
                     )
             )
 
@@ -970,7 +950,7 @@ def sliding_graphical_lasso(
         distance_constraint = window_size / 2
 
     # AnnData object should have more than 1 cell
-    if anndata.X.shape[0] < 2 or anndata.X.shape[1] < 2:
+    if adata.X.shape[0] < 2 or adata.X.shape[1] < 2:
         raise ValueError(
             """
             Not enough cells/regions in the AnnData object.
@@ -980,7 +960,7 @@ def sliding_graphical_lasso(
         )
     # print("Calculating penalty coefficient alpha...")
     alpha = average_alpha(
-        anndata,
+        adata,
         window_size=window_size,
         unit_distance=unit_distance,
         n_samples=n_samples,
@@ -996,110 +976,122 @@ def sliding_graphical_lasso(
     if verbose:
         print("Alpha coefficient calculated : {}".format(alpha))
 
-    start_slidings = [0, int(window_size / 2)]
+    # TODO chr_progresses = Progress()
+    with LocalCluster(
+        n_workers=njobs,  # Number of workers (matches njobs from Joblib)
+        processes=False,   # Use processes for isolation
+        threads_per_worker=threads_per_worker,  # Single-threaded
+    ) as cluster, Client(cluster) as client:    # (best for CPU-bound tasks)
+
+        if verbose:
+            # Optional: Monitor your computation with the Dask dashboard
+            print(client.dashboard_link)
+
+        # Configure joblib to use the default joblib parameters
+        with parallel_config():
+            chr_results = Parallel(n_jobs=njobs)(delayed(
+                chr_batch_graphical_lasso)(
+                adata.X[:, adata.var["chromosome"] == chromosome],
+                adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                chromosome,
+                alpha,
+                unit_distance,
+                window_size,
+                init_method,
+                max_elements,
+                n=n
+            ) for n, chromosome in enumerate(
+                adata.var["chromosome"].unique()))
+
+    full_results = sp.sparse.block_diag(chr_results)
+
+    return full_results
+
+
+def chr_batch_graphical_lasso(
+    chr_X,
+    chr_var,
+    chromosome,
+    alpha,
+    unit_distance,
+    window_size,
+    init_method,
+    max_elements,
+    n=0
+):
 
     results = {}
     idx_ = {}
     idy_ = {}
-    regions_list = anndata.var_names
-    # Get global indices of regions
-    map_indices = {regions_list[i]: i for i in range(len(regions_list))}
+    map_indices = {region: i for i, region in enumerate(chr_var.index)}
+    start_slidings = [0, int(window_size / 2)]
 
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
-        slide_results["idx"] = np.array([])
-        slide_results["idy"] = np.array([])
-        idx_["window_" + str(k)] = np.array([])
-        idy_["window_" + str(k)] = np.array([])
+        slide_results["idx"] = np.array([], dtype=int)
+        slide_results["idy"] = np.array([], dtype=int)
+        idx_["window_" + str(k)] = np.array([], dtype=int)
+        idy_["window_" + str(k)] = np.array([], dtype=int)
 
-#        if k == 0:
-#            print("Starting to process chromosomes : {}".format(
-#                anndata.var["chromosome"].unique()))
-#        else:
-#            print("Finishing to process chromosomes : {}".format(
-#                anndata.var["chromosome"].unique()))
-        for chromosome in anndata.var["chromosome"].unique():
-            # Get start positions of windows
-            window_starts = [
-                i
-                for i in range(
-                    k,
-                    anndata.var["end"][
-                        anndata.var["chromosome"] == chromosome].max(),
-                    window_size,
-                )
-            ]
+        # Get start positions of windows
+        window_starts = [
+            i
+            for i in range(
+                k,
+                chr_var["end"][
+                    chr_var["chromosome"] == chromosome].max(),
+                window_size,
+            )
+        ]
 
-            idxs, subanndata_Xs, subanndata_vars = [], [], []
-            for start in track(
-                window_starts,
-                description="Calculating co-accessibility: {}, {}/2".format(
-                chromosome, (1 if k == 0 else 2)),):
-                end = start + window_size
-                # Get global indices of regions in the window
-                idx = np.where(
-                        (anndata.var["chromosome"] == chromosome)
-                        & (
-                            ((anndata.var["start"] > start)
-                             & (anndata.var["start"] < end-1))
-                            |
-                            ((anndata.var["end"] > start)
-                             & (anndata.var["end"] < end-1))
-                          )
-                        )[0]
-                if 1 < len(idx) <= max_elements:
-                    idxs.append(idx)
-                #subanndata_Xs.append(anndata[:, idxs[-1]].X)
-                #subanndata_vars.append(anndata[:, idxs[-1]].var)
-                #submap_indices = {k: v for k, v in map_indices.items() if k in subanndata_vars[-1].index.values}
-                
+        idxs = []
+        for start in window_starts:
+            end = start + window_size
+            # Get global indices of regions in the window
+            idx = np.where(
+                    ((chr_var["start"] > start)
+                     & (chr_var["start"] < end-1))
+                    |
+                    ((chr_var["end"] > start)
+                     & (chr_var["end"] < end-1))
+                    )[0]
+            if 1 < len(idx) <= max_elements:
+                idxs.append(idx)
                 x_, y_ = \
-                np.meshgrid(idxs[-1], idxs[-1])
+                    np.meshgrid(idxs[-1], idxs[-1])
                 idx_["window_" + str(k)], idy_["window_" + str(k)] = \
                     np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
                     np.concatenate([idy_["window_" + str(k)], y_.flatten()])
+        if idxs == []:
+            continue
+        # Use joblib.Parallel to run the function in parallel
+        # on the different chromosomes
+        parallel_lasso_results = Parallel(n_jobs=1, backend="threading")(
+            delayed(single_graphical_lasso)(
+                idx, chr_X, chr_var.iloc[idx, :],
+                alpha,
+                unit_distance,
+                init_method,
+                map_indices)
+            for idx in tqdm.tqdm(idxs, position=n, leave=False))
 
-            if idxs == []:
-                continue
+        # Unpack the results and concatenate the arrays
+        scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
 
-            # Use joblib.Parallel to run the function in parallel, no need to iterate over `b` unless it's required for something else
-            parallel_lasso_results = Parallel(n_jobs=njobs)(delayed(parallel_lasso_call)(
-                idx, anndata[:, idx].var, anndata[:, idx].X, alpha, unit_distance, init_method, map_indices) for idx in idxs)
-            
-            # Unpack the results and concatenate the arrays
-            scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
-            
-            # Concatenate the lists into the final result arrays
-            slide_results = {
-                "scores": np.concatenate([slide_results["scores"], *scores_list]),
-                "idx": np.concatenate([slide_results["idx"], *idx_list]),
-                "idy": np.concatenate([slide_results["idy"], *idy_list])
-            }
+        # Concatenate the lists into the final result arrays
+        slide_results = {
+            "scores": np.concatenate([slide_results["scores"], *scores_list]),
+            "idx": np.concatenate([slide_results["idx"], *idx_list]),
+            "idy": np.concatenate([slide_results["idy"], *idy_list])
+        }
         # Create sparse matrix
         results["window_" + str(k)] = sp.sparse.coo_matrix(
             (slide_results["scores"],
                 (slide_results["idx"], slide_results["idy"])),
-            shape=(anndata.X.shape[1], anndata.X.shape[1]),
+            shape=(chr_X.shape[1], chr_X.shape[1]),
         )
-    results = reconcile(results, idx_, idy_)
-
-    print("Done !")
-    return results
-
-
-# Define the function call to be parallelized
-def parallel_lasso_call(idx, subanndata_var, subanndata_X, alpha, unit_distance, init_method, submap_indices):
-    corrected_scores, idx, idy = single_graphical_lasso(
-        idx,
-        subanndata_var,
-        subanndata_X,
-        alpha,
-        unit_distance,
-        init_method,
-        submap_indices
-    )
-    return corrected_scores, idx, idy
+    return reconcile(results, idx_, idy_)
 
 
 def single_graphical_lasso(
