@@ -1003,7 +1003,7 @@ def sliding_graphical_lasso(
             ) for n, chromosome in enumerate(
                 adata.var["chromosome"].unique()))
 
-    full_results = sp.sparse.block_diag(chr_results)
+    full_results = sp.sparse.csr_matrix(sp.sparse.block_diag(chr_results))
 
     return full_results
 
