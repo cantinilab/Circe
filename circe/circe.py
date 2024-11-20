@@ -1172,26 +1172,25 @@ def reconcile(
 ):
 
     results_keys = list(results_gl.keys())
-    print("Averaging co-accessibility scores across windows...")
-
     #################
     # To keep entries contained in 2 windows
-
     # sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
 
     # Initiate divider depending on number of overlapping windows
     divider = sp.sparse.csr_matrix(
-        ([1 for i in range(len(idx_gl[results_keys[0]]))],
-         (idx_gl[results_keys[0]].astype(int),
-          idy_gl[results_keys[0]].astype(int)))
+        (np.ones(len(idx_gl[results_keys[0]])),
+         (idx_gl[results_keys[0]],
+          idy_gl[results_keys[0]])),
+        shape=average.shape
     )
     for k in results_keys[1:]:
         divider = divider + sp.sparse.csr_matrix(
             ([1 for i in range(len(idx_gl[k]))],
-             (idx_gl[k].astype(int),
-              idy_gl[k].astype(int)))
+             (idx_gl[k],
+              idy_gl[k])),
+            shape=average.shape
         )
 
     # extract all values where there is no sign agreement between windows
