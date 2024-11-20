@@ -1108,33 +1108,31 @@ def parallel_lasso_call(idx, subanndata_var, subanndata_X, alpha, unit_distance,
     return corrected_scores, idx, idy
 
 
-def single_graphical_lasso(idx, anndata_var, anndata_X, alpha, unit_distance, init_method, map_indices):
-    # Add to the list of all regions used to know how many
-    # times each region is used
-    
-
-    # already global ?
-    # Get global indices of regions in the window
-    # idx = [map_indices[i] for i in regions_list[idx]]
+def single_graphical_lasso(
+    idx,
+    memmap_data,
+    anndata_var,
+    alpha,
+    unit_distance,
+    init_method, map_indices
+):
 
     if idx is None or len(idx) <= 1:
         # print("Less than two regions in window")
-        return np.array([]), np.array([]), np.array([])
+        return np.array([], dtype=int), \
+            np.array([], dtype=int), \
+            np.array([], dtype=int)
 
+    memmap_subset = memmap_data[:, idx]
     # Get submatrix
-    if sp.sparse.issparse(anndata_X):
-        window_accessibility = anndata_X.toarray()
-        window_scores = np.cov(window_accessibility, rowvar=False)
-        window_scores = window_scores + 1e-4 * np.eye(
-            len(window_scores))
+    if sp.sparse.issparse(memmap_subset):
+        window_scores = np.cov(memmap_subset.toarray(), rowvar=False) + \
+            1e-4 * np.eye(memmap_subset.shape[1])
 
     else:
-        window_accessibility = anndata_X.copy()
-        window_scores = np.cov(window_accessibility, rowvar=False)
-        window_scores = window_scores + 1e-4 * np.eye(
-            len(window_scores))
+        window_scores = np.cov(memmap_subset, rowvar=False) + 1e-4 * np.eye(
+            memmap_subset.shape[1])
 
-    
     distance = get_distances_regions_from_dataframe(anndata_var)
 
     # Test if distance is negative
@@ -1164,28 +1162,21 @@ def single_graphical_lasso(idx, anndata_var, anndata_X, alpha, unit_distance, in
     # Fit graphical lasso
     graph_lasso_model.fit(window_scores)
 
-    # Names of regions in the window
-    window_region_names = anndata_var.index.values.copy()
-
     # Transform to correlation matrix
-    scores = cov_to_corr(graph_lasso_model.covariance_)
-
-    # convert to sparse matrix the results
-    corrected_scores = sp.sparse.coo_matrix(
-        scores)
+    scores = sp.sparse.coo_matrix(
+        cov_to_corr(graph_lasso_model.covariance_))
 
     # Convert corrected_scores column
     # and row indices to global indices
     idx = [
         map_indices[name]
-        for name in window_region_names[corrected_scores.row]
+        for name in anndata_var.index.values[scores.row]
     ]
     idy = [
         map_indices[name]
-        for name in window_region_names[corrected_scores.col]
+        for name in anndata_var.index.values[scores.col]
     ]
-
-    return corrected_scores.data, idx, idy
+    return scores.data, idx, idy
 
 
 def reconcile(
