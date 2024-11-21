@@ -1,6 +1,6 @@
 name: Wheels
 
-on: [pull_request]
+on: [pull_request, push]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
