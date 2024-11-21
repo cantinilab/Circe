@@ -1,6 +1,6 @@
 name: Wheels
 
-on: [push, pull_request]
+on: [pull_request]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -50,6 +50,9 @@ jobs:
           python -m build
       - uses: pypa/cibuildwheel@v2.21
         env:
+          CIBW_BEFORE_BUILD: |
+            yum install -y blas lapack blas-devel lapack-devel gcc gcc-c++ &&
+            yum clean all
           CIBW_ARCHS_MACOS: auto universal2
           SYSTEM_VERSION_COMPAT: 0
           CIBW_SKIP: pp37-* pp38-* pp39-* pp31*-macosx*
