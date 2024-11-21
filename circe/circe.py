@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pandas as pd
 from rich.progress import track, Progress
@@ -985,35 +986,67 @@ def sliding_graphical_lasso(
     if verbose:
         print("Alpha coefficient calculated : {}".format(alpha))
 
-    # TODO chr_progresses = Progress()
-    with LocalCluster(
-        n_workers=njobs,  # Number of workers (matches njobs from Joblib)
-        processes=False,   # Use processes for isolation
-        threads_per_worker=threads_per_worker,  # Single-threaded
-    ) as cluster, Client(cluster) as client:    # (best for CPU-bound tasks)
+    # Custom log handler to capture log messages of distributed on memory
+    class ListLogHandler(logging.Handler):
+        def emit(self, record):
+            log_messages.append(self.format(record))
+    logger = logging.getLogger('distributed.worker.memory')
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    # List to store log messages
+    log_messages = []
+    handler = ListLogHandler()
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
 
-        if verbose:
-            # Optional: Monitor your computation with the Dask dashboard
-            print(client.dashboard_link)
+    try:
+        # TODO chr_progresses = Progress()
+        with LocalCluster(
+            n_workers=njobs,  # Number of workers (matches njobs from Joblib)
+            processes=False,   # Use processes for isolation
+            threads_per_worker=threads_per_worker,  # Single-threaded
+        ) as cluster, Client(cluster) as client:    # (best for CPU-bound tasks)
 
-        # Configure joblib to use the default joblib parameters
-        with parallel_config():
-            chr_results = Parallel(n_jobs=njobs)(delayed(
-                chr_batch_graphical_lasso)(
-                adata.X[:, adata.var["chromosome"] == chromosome],
-                adata.var.loc[adata.var["chromosome"] == chromosome, :],
-                chromosome,
-                alpha,
-                unit_distance,
-                window_size,
-                init_method,
-                max_elements,
-                n=n
-            ) for n, chromosome in enumerate(
-                adata.var["chromosome"].unique()))
+            if verbose:
+                # Optional: Monitor your computation with the Dask dashboard
+                print(client.dashboard_link)
 
-    full_results = sp.sparse.csr_matrix(sp.sparse.block_diag(chr_results))
+            # Configure joblib to use the default joblib parameters
+            with parallel_config():
+                chr_results = Parallel(n_jobs=njobs)(delayed(
+                    chr_batch_graphical_lasso)(
+                    adata.X[:, adata.var["chromosome"] == chromosome],
+                    adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                    chromosome,
+                    alpha,
+                    unit_distance,
+                    window_size,
+                    init_method,
+                    max_elements,
+                    n=n
+                ) for n, chromosome in enumerate(
+                    adata.var["chromosome"].unique()))
 
+    except Exception as e:
+        logger.warning("Exception occurred: %s", e)
+
+    full_results = sp.sparse.block_diag(chr_results)
+
+    # Display collected log messages at the end of the script
+    if verbose:
+        print("Captured Warning Messages:")
+        for message in log_messages:
+            print(message)
+    else:
+        print(
+            """
+            Logger: {} warnings message have been returned by distributed about workers memory.\n
+            It's usually expected, but you can display them with verbose=True
+            """.format(len(log_messages)))
+    
     return full_results
 
 
