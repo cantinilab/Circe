@@ -1083,7 +1083,7 @@ def chr_batch_graphical_lasso(
                 unit_distance,
                 init_method,
                 map_indices)
-            for idx in tqdm.tqdm(idxs, position=n, leave=False))
+            for idx in tqdm.tqdm(idxs, position=n, leave=False, f"Processing chromosome: '{chromosme}'"))
 
         # Unpack the results and concatenate the arrays
         scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
