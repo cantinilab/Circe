@@ -1073,6 +1073,12 @@ def chr_batch_graphical_lasso(
                     np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
                     np.concatenate([idy_["window_" + str(k)], y_.flatten()])
         if idxs == []:
+            results["window_" + str(k)] = sp.sparse.coo_matrix(
+                (np.array([], dtype=int),
+                 (np.array([], dtype=int),
+                  np.array([], dtype=int)),
+            shape=(chr_X.shape[1], chr_X.shape[1]),
+        )
             continue
         # Use joblib.Parallel to run the function in parallel
         # on the different chromosomes
