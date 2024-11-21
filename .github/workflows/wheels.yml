@@ -53,7 +53,7 @@ jobs:
           CIBW_BEFORE_BUILD: |
             if grep -q 'Ubuntu' /etc/os-release; then
               apt-get update &&
-              apt-get install -y libblas-dev liblapack-dev gfortran &&
+              apt-get install -y libblas-dev liblapack-dev gfortran g++ &&
               apt-get clean;
             fi
           CIBW_ARCHS_MACOS: auto universal2
