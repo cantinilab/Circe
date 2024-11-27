@@ -1033,8 +1033,6 @@ def sliding_graphical_lasso(
     except Exception as e:
         logger.warning("Exception occurred: %s", e)
 
-    full_results = sp.sparse.block_diag(chr_results)
-
     # Display collected log messages at the end of the script
     if verbose:
         print("Captured Warning Messages:")
@@ -1047,6 +1045,7 @@ def sliding_graphical_lasso(
             It's usually expected, but you can display them with verbose=True
             """.format(len(log_messages)))
     
+    full_results = sp.sparse.block_diag(chr_results)
     return full_results
 
 
