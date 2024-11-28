@@ -1,3 +1,34 @@
+"""
+Circe: Predict cis-Regulatory DNA Interactions from Single-Cell ATAC-seq Data
+
+   O - - - - - ⊙                                    O - - - - - O     
+    O - - - - ⊙ *                                   *0 - - - - o      
+      O - - o     **                              *    O - - o        
+         O          **                           *        O           
+      o - - O         **                         *     o - - O        
+    o - - - - O         **                       *   o - - - - O      
+   o - - - - - O       ▄▄**  ▄▄▄  ▄▄▄    ▄▄▄  ▄▄▄▄* o - - - - - O     
+   O - - - - - O      █   **  █   █  █  █     █     O - - - - - O     
+   O - - - - - ⊙*     █    ** █   █▀▀▄  █     █▀▀▀  O - - - - - o     
+    O - - - - o  *    ▀▄▄▄ **▄█▄  █  █  ▀▄▄▄  █▄▄▄  *0 - - - - o      
+      O - - o     *        **                     *    O - - o        
+         O        *       **                     *        O           
+      o - - O     *      **     Predict         *      o - - O        
+    o - - - - O  *     **    cis-Regulatory     *    o - - - - O      
+   o - - - - - ⊙*   **            DNA           *   o - - - - - O     
+   O - - - - - o  **          interactions       *  O - - - - - o     
+   O - - - - - ⊙*                                  *0 - - - - - O   
+
+About:
+-------
+Circe is a Python package designed to build co-accessibility networks from single-cell ATAC-seq data. 
+It implements the Cicero algorithm (Pliner et al., 2018) to predict cis-regulatory DNA interactions.
+
+Author:
+-------
+Rémi Trimbour - remi.trimbour@gmail.com
+"""
+
 # setup.py
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
