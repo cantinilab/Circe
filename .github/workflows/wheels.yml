@@ -51,12 +51,26 @@ jobs:
       - uses: pypa/cibuildwheel@v2.21
         env:
           CIBW_BEFORE_BUILD: |
-            cat /etc/os-release
-            if grep -q 'Ubuntu' /etc/os-release; then
-              apt-get update &&
-              apt-get install -y libblas-dev liblapack-dev gfortran g++ &&
-              apt-get clean;
+            if [ -f /etc/os-release ]; then
+              if grep -q 'Ubuntu' /etc/os-release; then
+                echo "Running on Ubuntu";
+                apt-get update && \
+                apt-get install -y libblas-dev liblapack-dev gfortran g++ && \
+                apt-get clean;
+              elif grep -q 'CentOS' /etc/os-release; then
+                echo "Running on CentOS";
+                yum update -y && \
+                yum groupinstall -y "Development Tools" && \
+                yum install -y blas-devel lapack-devel gcc gcc-gfortran && \
+                yum clean all;
+              else
+                cat /etc/os-release
+                echo "Unsupported OS. Skipping LAPACK installation.";
+              fi
+            else
+              echo "/etc/os-release not found. Cannot determine the operating system.";
             fi
+
           CIBW_ARCHS_MACOS: auto universal2
           SYSTEM_VERSION_COMPAT: 0
           CIBW_SKIP: pp37-* pp38-* pp39-* pp31*-macosx*
