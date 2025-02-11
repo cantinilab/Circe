@@ -66,7 +66,7 @@ ci.plot_connections(
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
 
-All tests can be found in the [circe benchmark repo](https://github.com/r-trimbour/circe_benchmark/)
+All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility)
 
 ### Real dataset 2 - subsample of 10x PBMC (2021)
 - Pearson correlation coefficient: 0.999958
