@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from rich.progress import track, Progress
+from rich.progress import Progress
 import time
 import scipy as sp
 from circe import quic_graph_lasso
@@ -86,10 +86,11 @@ def subset_region(adata, chromosome, start, end):
     # subset per chromosome
     adata = adata[:, adata.var['chromosome'] == chromosome]
     # subset on region window
-    adata = adata[:, ((start <= adata.var['start'])
-                          & (adata.var['start'] <= end)) +
-                         ((start <= adata.var['end'])
-                          & (adata.var['end'] <= end))]
+    adata = adata[:, (
+        (start <= adata.var['start'])
+        & (adata.var['start'] <= end)) + (
+        (start <= adata.var['end'])
+        & (adata.var['end'] <= end))]
 
     return adata
 
@@ -189,7 +190,7 @@ def compute_atac_network(
     seed=42,
     njobs=1,
     threads_per_worker=1,
-    verbose=False
+    verbose=1
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -258,9 +259,11 @@ def compute_atac_network(
         Number of jobs to run in parallel. The default is 1.
     threads_per_worker : int, optional
         Number of threads per worker. The default is 1.
-    verbose : bool, optional
-        If True, will print additional information. The default is False.
-
+    verbose : int, optional
+        Verbose level.
+            0: no output at all
+            1: tqdm progress bar
+            2:detailed output
     Returns
     -------
     None.
@@ -783,7 +786,7 @@ def sliding_graphical_lasso(
     n_samples=100,
     n_samples_maxtry=500,
     init_method="precomputed",
-    verbose=False,
+    verbose=1,
     seed=42,
     njobs=1,
     threads_per_worker=1
@@ -844,8 +847,11 @@ def sliding_graphical_lasso(
         Method to use to compute initial covariance matrix.
         The default is "precomputed".
         SHOULD BE CHANGED CAREFULLY.
-    verbose : bool, optional
-        Print alpha coefficient. The default is False.
+    verbose : int, optional
+        Verbose level.
+            0: no output at all
+            1: tqdm progress bar
+            2:detailed output
     seed : int, optional
         Seed for random number generator. The default is 42.
     njobs : int, optional
@@ -919,7 +925,7 @@ def sliding_graphical_lasso(
             none_values.append("window_size")
             window_size = organism_values[default_organism]["window_size"]
         if distance_constraint is None:
-            none_values.append("distance_constraint") 
+            none_values.append("distance_constraint")
             distance_constraint = window_size / 2
         if s is None:
             none_values.append("s")
@@ -968,7 +974,7 @@ def sliding_graphical_lasso(
             co-accessibility.
             """
         )
-    # print("Calculating penalty coefficient alpha...")
+
     alpha = average_alpha(
         adata,
         window_size=window_size,
@@ -983,7 +989,7 @@ def sliding_graphical_lasso(
         init_method=init_method,
         seed=seed,
     )
-    if verbose:
+    if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
 
     # Custom log handler to capture log messages of distributed on memory
@@ -1008,7 +1014,7 @@ def sliding_graphical_lasso(
             n_workers=njobs,  # Number of workers (matches njobs from Joblib)
             processes=False,   # Use processes for isolation
             threads_per_worker=threads_per_worker,  # Single-threaded
-        ) as cluster, Client(cluster) as client:    # (best for CPU-bound tasks)
+        ) as cluster, Client(cluster) as client:   # (best for CPU-bound tasks)
 
             if verbose:
                 # Optional: Monitor your computation with the Dask dashboard
@@ -1018,7 +1024,7 @@ def sliding_graphical_lasso(
             with parallel_config():
                 chr_results = Parallel(n_jobs=njobs)(delayed(
                     chr_batch_graphical_lasso)(
-                    adata.X[:, adata.var["chromosome"] == chromosome],
+                    adata.X[:, (adata.var["chromosome"] == chromosome).values],
                     adata.var.loc[adata.var["chromosome"] == chromosome, :],
                     chromosome,
                     alpha,
@@ -1026,7 +1032,8 @@ def sliding_graphical_lasso(
                     window_size,
                     init_method,
                     max_elements,
-                    n=n
+                    n=n,
+                    disable_tqdm=(verbose < 1),
                 ) for n, chromosome in enumerate(
                     adata.var["chromosome"].unique()))
 
@@ -1034,18 +1041,20 @@ def sliding_graphical_lasso(
         logger.warning("Exception occurred: %s", e)
 
     # Display collected log messages at the end of the script
-    if verbose:
+    if verbose >= 2:
         print("Captured Warning Messages:")
         for message in log_messages:
             print(message)
     else:
-        print(
-            """
-            Logger: {} warnings message have been returned by distributed about workers memory.\n
-            It's usually expected, but you can display them with verbose=True
-            """.format(len(log_messages)))
-    
-    full_results = sp.sparse.block_diag(chr_results)
+        if len(log_messages) > 0:
+            print(
+                """
+                Logger: {} warnings message have been returned by distributed
+                about workers memory.\n
+                It's usually expected, but you can display them with verbose=2
+                """.format(len(log_messages)))
+
+    full_results = sp.sparse.block_diag(chr_results, format="csr")
     return full_results
 
 
@@ -1058,7 +1067,8 @@ def chr_batch_graphical_lasso(
     window_size,
     init_method,
     max_elements,
-    n=0
+    n=0,
+    disable_tqdm=False,
 ):
 
     results = {}
@@ -1121,7 +1131,11 @@ def chr_batch_graphical_lasso(
                 unit_distance,
                 init_method,
                 map_indices)
-            for idx in tqdm.tqdm(idxs, position=n, leave=False, desc=f"Processing chromosome: '{chromosome}'"))
+            for idx in tqdm.tqdm(
+                idxs,
+                position=n, leave=False,
+                disable=disable_tqdm,
+                desc=f"Processing chromosome: '{chromosome}'"))
 
         # Unpack the results and concatenate the arrays
         scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
@@ -1151,7 +1165,6 @@ def single_graphical_lasso(
 ):
 
     if idx is None or len(idx) <= 1:
-        # print("Less than two regions in window")
         return np.array([], dtype=int), \
             np.array([], dtype=int), \
             np.array([], dtype=int)
@@ -1163,8 +1176,8 @@ def single_graphical_lasso(
             1e-4 * np.eye(memmap_subset.shape[1])
 
     else:
-        window_scores = np.cov(memmap_subset, rowvar=False) + 1e-4 * np.eye(
-            memmap_subset.shape[1])
+        window_scores = np.cov(memmap_subset, rowvar=False) + \
+            1e-4 * np.eye(memmap_subset.shape[1])
 
     distance = get_distances_regions_from_dataframe(anndata_var)
 
