@@ -15,7 +15,7 @@ size_reg = 50
 counts = []  # Create one DataFrame (cells x regions) per chromosome
 for chr in range(1, nb_chr+1):
     counts.append(pd.DataFrame(
-        np.random.randint(0,100, size=(nb_cells, nb_regions_per_chr)),
+        np.random.randint(0, 100, size=(nb_cells, nb_regions_per_chr)),
         index=['Cell_'+j for j in map(str, range(nb_cells))],
         columns=['chr'+str(chr)+'_'+str(i)+'_'+str(i+size_reg)
                  for i in range(

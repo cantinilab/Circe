@@ -58,6 +58,7 @@ def test_find_ccan_cutoff_basic():
     print(result)
     assert 0 <= result <= 1, "The cutoff value should be between 0 and 1"
 
+
 def test_find_ccan_cutoff_no_positive_scores():
     connection_df = pd.DataFrame({
         'Peak1': ['chr1_100_200', 'chr1_150_250'],
@@ -66,6 +67,7 @@ def test_find_ccan_cutoff_no_positive_scores():
     })
     df_ccans = find_ccans(connection_df, coaccess_cutoff_override=0.8)
     assert df_ccans.empty, "No CCANs should be found when all scores are negative"
+
 
 # Test number_of_ccans function
 def test_number_of_ccans_basic():
@@ -78,6 +80,7 @@ def test_number_of_ccans_basic():
     assert isinstance(result, int), "The result should be an integer representing the number of CCANs"
     assert result >= 0, "The number of CCANs should be non-negative"
 
+
 # Test make_ccan_graph function
 def test_make_ccan_graph():
     connection_df = pd.DataFrame({
@@ -89,6 +92,7 @@ def test_make_ccan_graph():
     assert isinstance(graph, nx.Graph), "The function should return a networkx Graph"
     assert len(graph.nodes()) > 0, "The graph should have at least one node"
     assert len(graph.edges()) > 0, "The graph should have at least one edge"
+
 
 def test_make_ccan_graph_no_edges():
     connection_df = pd.DataFrame({
@@ -119,9 +123,10 @@ def test_find_ccans_with_override():
     df_ccans = find_ccans(connection_df, coaccess_cutoff_override=0.3)
     print(df_ccans)
 
+
 # Test add_ccans function
 def test_add_ccans_basic():
-    
+
     adata_with_ccans = add_ccans(atac)
     assert 'CCAN' in adata_with_ccans.var.columns, "The 'CCAN' column should be added to the var slot of AnnData"
 
@@ -134,6 +139,7 @@ def test_plot_connections_empty_df():
     with pytest.raises(ValueError, match="Couldn't find connections"):
         ci.draw.plot_connections(empty_df, "chr1", 1e5, 3e5, ax=ax)
 
+
 def test_plot_connections_missing_columns():
     atac_df = pd.DataFrame({
         "Peak1": ["chr1_100_200", "chr1_150_250"],
@@ -142,6 +148,7 @@ def test_plot_connections_missing_columns():
     fig, ax = plt.subplots(1)
     with pytest.raises(ValueError, match="Peak2 must be present"):
         ci.draw.plot_connections(atac_df, "chr1", 1e5, 3e5, ax=ax)
+
 
 def test_plot_connections_invalid_boundaries():
     atac_df = pd.DataFrame({
@@ -162,7 +169,6 @@ def test_plot_connections_invalid_boundaries():
     #ci.draw.plot_connections(atac, "chr1", None, 10000, ax=ax)    
 
 
-
 # Group 2: Parameter Testing and Variations
 
 def test_plot_connections_threshold():
@@ -175,6 +181,7 @@ def test_plot_connections_threshold():
     ci.draw.plot_connections(atac_df, "chr1", 100, 300, abs_threshold=0.3, ax=ax)
     assert len(ax.patches) == 2  # Only 1 connection should be plotted
 
+
 def test_plot_connections_only_positive():
     atac_df = pd.DataFrame({
         "Peak1": ["chr1_100_200", "chr1_150_250"],
@@ -185,6 +192,7 @@ def test_plot_connections_only_positive():
     ci.draw.plot_connections(atac_df, "chr1", 100, 300, only_positive=True, ax=ax)
     assert len(ax.patches) == 2  # Only 1 positive connection should be plotted
 
+
 def test_plot_connections_custom_ax_labels():
     atac_df = pd.DataFrame({
         "Peak1": ["chr1_100_200", "chr1_150_250"],
@@ -194,6 +202,7 @@ def test_plot_connections_custom_ax_labels():
     fig, ax = plt.subplots(1)
     ci.draw.plot_connections(atac_df, "chr1", 100, 300, ax_labels=False, ax=ax)
     assert ax.get_ylabel() == ''  # Axis labels should be turned off
+
 
 # Group 3: Visual and Plot Customization
 
@@ -215,6 +224,7 @@ def test_plot_connections_transparency_by_score():
     })
     fig, ax = plt.subplots(1)
     ci.draw.plot_connections(atac_df, "chr1", 100, 300, transparency_by_score=True, ax=ax)
+
 
 def test_plot_connections_custom_arc_params():
     atac_df = pd.DataFrame({

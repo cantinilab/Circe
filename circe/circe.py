@@ -1,13 +1,16 @@
+import logging
 import numpy as np
 import pandas as pd
-from rich.progress import track, Progress
+from rich.progress import Progress
 import time
 import scipy as sp
 from circe import quic_graph_lasso
 from functools import reduce
 import warnings
 from typing import Union
-from joblib import Parallel, delayed
+from dask.distributed import LocalCluster, Client
+from joblib import Parallel, delayed, parallel_config
+import tqdm
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
@@ -19,38 +22,32 @@ warnings.filterwarnings(
 
 def cov_to_corr(cov_matrix, tol=1e-20):
     """
-    Convert covariance matrix to correlation matrix,
-    with a tolerance for diagonal elements.
-    
+    Optimized version: Convert covariance matrix to correlation matrix,
+    with a tolerance for small diagonal elements.
+
     Parameters
     ----------
     cov_matrix : np.array
         Covariance matrix.
     tol : float, optional
-        Tolerance for diagonal elements. The default is 1e-20.
+        Tolerance for diagonal elements. Default is 1e-20.
 
     Returns
     -------
     correlation_matrix : np.array
         Correlation matrix.
     """
-    # Diagonal elements (variances)
+    # Diagonal elements (standard deviations)
     d = np.sqrt(cov_matrix.diagonal())
 
-    # Apply tolerance: if a variance is less than tol,
-    # use it directly instead of normalizing to 1.
-    # This avoids division by very small numbers
-    # which can lead to numerical instability.
-    d_tol = np.where(d < tol, cov_matrix.diagonal(), d)
+    # Adjust small values in d to avoid instability
+    d[d < tol] = 1
 
-    # Outer product of the adjusted standard deviations vector
-    d_matrix = np.outer(d_tol, d_tol)
+    # Calculate correlation matrix using broadcasting for efficiency
+    correlation_matrix = cov_matrix / d[:, None] / d[None, :]
 
-    # Element-wise division of the covariance matrix by the d_matrix
-    correlation_matrix = cov_matrix / d_matrix
-
-    # Ensure the diagonal elements are 1 or the original diagonal value if it's below tolerance
-    np.fill_diagonal(correlation_matrix, np.where(d < tol, cov_matrix.diagonal(), 1))
+    # Set diagonal to 1
+    np.fill_diagonal(correlation_matrix, 1)
 
     return correlation_matrix
 
@@ -87,19 +84,20 @@ def subset_region(adata, chromosome, start, end):
         )
 
     # subset per chromosome
-    anndata = adata[:, adata.var['chromosome'] == chromosome]
+    adata = adata[:, adata.var['chromosome'] == chromosome]
     # subset on region window
-    anndata = anndata[:, ((start <= anndata.var['start'])
-                          & (anndata.var['start'] <= end)) +
-                         ((start <= anndata.var['end'])
-                          & (anndata.var['end'] <= end))]
+    adata = adata[:, (
+        (start <= adata.var['start'])
+        & (adata.var['start'] <= end)) + (
+        (start <= adata.var['end'])
+        & (adata.var['end'] <= end))]
 
-    return anndata
+    return adata
 
 
-def add_region_infos(anndata, sep=("_", "_"), inplace=False):
+def add_region_infos(adata, sep=("_", "_"), inplace=False):
     """
-    Get region informations from the var_names of anndata object.
+    Get region informations from the var_names of adata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
                              'start' : 12345,
                              'end' : 12346
@@ -110,22 +108,22 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     sep : tuple, optional
         Separator of region names. The default is ('_', '_').
 
     Returns
     -------
-    anndata : anndata object
+    adata : anndata object
         anndata object with region informations in var.
     """
     # Check if user wants to modify anndata inplace or return a copy
     if inplace:
         pass
     else:
-        anndata = anndata.copy()
-    regions_list = anndata.var_names
+        adata = adata.copy()
+    regions_list = adata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
     regions_list = regions_list.str.replace(sep[1], sep[0])
@@ -147,7 +145,7 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
 
     # Extract region informations from var_names
     region_infos = pd.DataFrame(
-        regions_list, index=anndata.var_names,
+        regions_list, index=adata.var_names,
         columns=["chromosome", "start", "end"]
     )
 
@@ -156,28 +154,28 @@ def add_region_infos(anndata, sep=("_", "_"), inplace=False):
     region_infos["end"] = region_infos["end"].astype(int)
 
     # Add region informations to var
-    anndata.var["chromosome"] = region_infos["chromosome"]
-    anndata.var["start"] = region_infos["start"]
-    anndata.var["end"] = region_infos["end"]
+    adata.var["chromosome"] = region_infos["chromosome"]
+    adata.var["start"] = region_infos["start"]
+    adata.var["end"] = region_infos["end"]
 
-    anndata = sort_regions(anndata)
+    adata = sort_regions(adata)
     # Return anndata if inplace is False
     if inplace:
         pass
     else:
-        return anndata
+        return adata
 
 
-def sort_regions(anndata):
+def sort_regions(adata):
     """
     Sort regions by chromosome and start position.
     """
-    ord_index = anndata.var.sort_values(["chromosome", "start"]).index
-    return anndata[:, ord_index]
+    ord_index = adata.var.sort_values(["chromosome", "start"]).index
+    return adata[:, ord_index]
 
 
 def compute_atac_network(
-    anndata,
+    adata,
     window_size=None,
     unit_distance=1000,
     distance_constraint=None,
@@ -191,7 +189,8 @@ def compute_atac_network(
     key="atac_network",
     seed=42,
     njobs=1,
-    verbose=False
+    threads_per_worker=1,
+    verbose=0
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -215,7 +214,7 @@ def compute_atac_network(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     window_size : int, optional
         Size of sliding window, in which co-accessible regions can be found.
@@ -256,16 +255,22 @@ def compute_atac_network(
         Key to store the results in adata.varp. The default is "atac_network".
     seed : int, optional
         Seed for random number generator. The default is 42.
-    verbose : bool, optional
-        If True, will print additional information. The default is False.
-
+    njobs : int, optional
+        Number of jobs to run in parallel. The default is 1.
+    threads_per_worker : int, optional
+        Number of threads per worker. The default is 1.
+    verbose : int, optional
+        Verbose level.
+            0: no output at all
+            1: tqdm progress bar
+            2:detailed output
     Returns
     -------
     None.
     """
 
-    anndata.varp[key] = sliding_graphical_lasso(
-        anndata=anndata,
+    adata.varp[key] = sliding_graphical_lasso(
+        adata=adata,
         window_size=window_size,
         unit_distance=unit_distance,
         distance_constraint=distance_constraint,
@@ -283,7 +288,7 @@ def compute_atac_network(
 
 
 def extract_atac_links(
-    anndata,
+    adata,
     key=None,
     columns=['Peak1', 'Peak2', 'score']
 ):
@@ -294,7 +299,7 @@ def extract_atac_links(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as variable names.
     key : str, optional
         key from adata.varp. The default is None.
@@ -312,42 +317,42 @@ def extract_atac_links(
 
     if key is None:  # if only one key (I guess often), no need to precise key
         # maybe replace by a default one later
-        if len(list(anndata.varp)) == 1:
-            key = list(anndata.varp)[0]
+        if len(list(adata.varp)) == 1:
+            key = list(adata.varp)[0]
         else:
             raise KeyError(
                 "Several keys were found in adata.varp: {}, ".format(
-                    list(anndata.varp)) +
+                    list(adata.varp)) +
                 "please precise which keyword use (arg 'key'))"
             )
     else:
-        if key not in list(anndata.varp):
+        if key not in list(adata.varp):
             raise KeyError("The key you provided ({}) is not in adata.varp: {}"
-                           .format(key, list(anndata.varp))
+                           .format(key, list(adata.varp))
                            )
 
     # Convert to COO format if needed
     converted = False
-    if isinstance(anndata.varp[key], sp.sparse.csr_matrix):
-        anndata.varp[key] = anndata.varp[key].tocoo()
+    if isinstance(adata.varp[key], sp.sparse.csr_matrix):
+        adata.varp[key] = adata.varp[key].tocoo()
         converted = True
 
     links = pd.DataFrame(
         [(row, col, data) for (row, col, data) in zip(
-            [i for i in anndata.varp[key].row],
-            [i for i in anndata.varp[key].col],
-            anndata.varp[key].data)
+            [i for i in adata.varp[key].row],
+            [i for i in adata.varp[key].col],
+            adata.varp[key].data)
             if row < col],
         columns=columns
         ).sort_values(by=columns[2], ascending=False)
 
-    links[columns[0]] = [anndata.var_names[i] for i in links[columns[0]]]
-    links[columns[1]] = [anndata.var_names[i] for i in links[columns[1]]]
+    links[columns[0]] = [adata.var_names[i] for i in links[columns[0]]]
+    links[columns[1]] = [adata.var_names[i] for i in links[columns[1]]]
     links = links.reset_index(drop=True)
 
     # Convert back to CSR format if it was converted
     if converted:
-        anndata.varp[key] = anndata.varp[key].tocsr()
+        adata.varp[key] = adata.varp[key].tocsr()
 
     return links
 
@@ -384,14 +389,14 @@ def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
     return penalties
 
 
-def get_distances_regions(anndata):
+def get_distances_regions(adata):
     """
     Get distances between regions, var_names from an anndata object.
     'add_region_infos' should be run before this function.
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
 
     Returns
@@ -402,39 +407,14 @@ def get_distances_regions(anndata):
 
     # Store start and end positions in two arrays
     m, n = np.meshgrid(
-        (anndata.var["end"].values + anndata.var["start"].values)/2,
-        (anndata.var["end"].values + anndata.var["start"].values)/2)
+        (adata.var["end"].values + adata.var["start"].values)/2,
+        (adata.var["end"].values + adata.var["start"].values)/2)
     # Get distance between start of region m and end of region n
     distance = np.abs(m - n)
     # Replace diagonal by 1
     distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
     return distance
 
-def get_distances_regions_from_dataframe(df):
-    """
-    Get distances between regions, var_names from an anndata object.
-    'add_region_infos' should be run before this function.
-
-    Parameters
-    ----------
-    anndata : anndata object
-        anndata object with var_names as region names.
-
-    Returns
-    -------
-    distance : np.array
-        Distance between regions.
-    """
-
-    # Store start and end positions in two arrays
-    m, n = np.meshgrid(
-        (df["end"].values + df["start"].values)/2,
-        (df["end"].values + df["start"].values)/2)
-    # Get distance between start of region m and end of region n
-    distance = np.abs(m - n)
-    # Replace diagonal by 1
-    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
-    return distance
 
 def local_alpha(
     X,
@@ -570,7 +550,7 @@ def local_alpha(
 
 
 def average_alpha(
-    anndata,
+    adata,
     window_size=500000,
     unit_distance=1000,
     n_samples=100,
@@ -596,7 +576,7 @@ def average_alpha(
 
     Parameters
     ----------
-    anndata : anndata object
+    adata : anndata object
         anndata object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
@@ -648,16 +628,16 @@ def average_alpha(
     """
     start_slidings = [0, int(window_size / 2)]
 
-    idx_list = []
+    window_starts = []
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
         slide_results["idx"] = np.array([])
         slide_results["idy"] = np.array([])
-        for chromosome in anndata.var["chromosome"].unique():
+        for chromosome in adata.var["chromosome"].unique():
             if chromosomes_sizes is None:
-                chromosome_size = anndata.var["end"][
-                    anndata.var["chromosome"] == chromosome].max()
+                chromosome_size = adata.var["end"][
+                    adata.var["chromosome"] == chromosome].max()
             else:
                 try:
                     chromosome_size = chromosomes_sizes[chromosome]
@@ -666,44 +646,45 @@ def average_alpha(
                         "{} not found as key in chromosome_size, ".format(
                             chromosome) +
                         " using max end position.")
-                    chromosome_size = anndata.var["end"][
-                        anndata.var["chromosome"] == chromosome].max()
+                    chromosome_size = adata.var["end"][
+                        adata.var["chromosome"] == chromosome].max()
             # Get start positions of windows
-            window_starts = [
-                i
+            chr_window_starts = [
+                (chromosome, i)
                 for i in range(
                     k,
                     chromosome_size,
                     window_size,
                 )
             ]
-            for start in window_starts:
-                end = start + window_size
-                # Get global indices of regions in the window
-                idx = np.where(
-                    (anndata.var["chromosome"] == chromosome)
-                    & (
-                        ((anndata.var["start"] > start)
-                         & (anndata.var["start"] < end-1))
-                        |
-                        ((anndata.var["end"] > start)
-                         & (anndata.var["end"] < end-1))
-                      )
-                    )[0]
+            window_starts += chr_window_starts
 
-                if 1 < len(idx) <= max_elements:
-                    idx_list.append(idx)
+    random_windows = []
+    rng = np.random.default_rng(seed=seed)
+    rng.shuffle(window_starts)
+    while len(random_windows) < n_samples_maxtry:
+        n_window_to_choose = n_samples_maxtry-len(random_windows)
+        idx_windows = window_starts[0:n_window_to_choose]
+        if len(idx_windows) == 0:
+            break
+        window_starts = window_starts[n_window_to_choose:]
 
-    if len(idx_list) < n_samples_maxtry:
-        random_windows = idx_list
-    else:
-        rng = np.random.default_rng(seed=seed)
-        idx_list_indices = rng.choice(
-            len(idx_list),
-            n_samples_maxtry,
-            replace=False,
-        )
-        random_windows = [idx_list[i] for i in idx_list_indices]
+        for chromosome, start in idx_windows:
+            end = start + window_size
+            # Get global indices of regions in the window
+            idx = np.where(
+                (adata.var["chromosome"] == chromosome)
+                & (
+                    ((adata.var["start"] > start)
+                     & (adata.var["start"] < end-1))
+                    |
+                    ((adata.var["end"] > start)
+                     & (adata.var["end"] < end-1))
+                  )
+                )[0]
+
+            if 0 < len(idx) < 200:
+                random_windows.append(idx)
 
     # While loop to calculate alpha until n_samples measures are obtained
     with Progress() as progress:
@@ -715,12 +696,12 @@ def average_alpha(
             for window in random_windows:
                 # Calculate distances between regions
                 distances = get_distances_regions(
-                    anndata[:, window]
+                    adata[:, window]
                     )
 
                 # Calculate individual alpha
                 alpha = local_alpha(
-                    X=anndata[:, window].X,
+                    X=adata[:, window].X,
                     distances=distances,
                     maxit=max_alpha_iteration,
                     unit_distance=unit_distance,
@@ -793,7 +774,7 @@ def get_distances_regions_from_dataframe(df):
 
 
 def sliding_graphical_lasso(
-    anndata,
+    adata,
     window_size: Union[int, None] = None,
     unit_distance=1_000,
     distance_constraint=None,
@@ -805,9 +786,10 @@ def sliding_graphical_lasso(
     n_samples=100,
     n_samples_maxtry=500,
     init_method="precomputed",
-    verbose=False,
+    verbose=0,
     seed=42,
-    njobs=1
+    njobs=1,
+    threads_per_worker=1
 ):
     """
     Estimate co-accessibility scores between regions penalized on distance.
@@ -824,8 +806,8 @@ def sliding_graphical_lasso(
 
     Parameters
     ----------
-    anndata : anndata object
-        anndata object with var_names as region names.
+    adata : AnnData object
+        AnnData object with var_names as region names.
     window_size : int, optional
         Size of the sliding window, where co-accessible regions can be found.
         The default is None and will be set to 500000 if organism is None.
@@ -865,10 +847,17 @@ def sliding_graphical_lasso(
         Method to use to compute initial covariance matrix.
         The default is "precomputed".
         SHOULD BE CHANGED CAREFULLY.
-    verbose : bool, optional
-        Print alpha coefficient. The default is False.
+    verbose : int, optional
+        Verbose level.
+            0: no output at all
+            1: tqdm progress bar
+            2:detailed output
     seed : int, optional
         Seed for random number generator. The default is 42.
+    njobs : int, optional
+        Number of jobs to run in parallel. The default is 1.
+    threads_per_worker : int, optional
+        Number of threads per worker. The default is 1.
 
     Returns
     -------
@@ -902,10 +891,11 @@ def sliding_graphical_lasso(
             else:
                 warnings.warn(
                     """
-                    window_size is not None, using the value passed as argument.
+                    window_size is not None, using the value passed as param.
                     """, UserWarning)
             if distance_constraint is None:
-                distance_constraint = organism_values[organism]["distance_constraint"]
+                distance_constraint = organism_values[organism][
+                    "distance_constraint"]
             else:
                 warnings.warn(
                     """
@@ -935,12 +925,13 @@ def sliding_graphical_lasso(
             none_values.append("window_size")
             window_size = organism_values[default_organism]["window_size"]
         if distance_constraint is None:
-            none_values.append("distance_constraint") 
+            none_values.append("distance_constraint")
             distance_constraint = window_size / 2
         if s is None:
             none_values.append("s")
             s = organism_values[default_organism]["s"]
         if none_values:
+            citation = "https://cole-trapnell-lab.github.io/cicero-release/docs_m3/#important-considerations-for-non-human-data"
             warnings.warn(
                 """
                 No organism, nor value passed for the parameters: {0},
@@ -955,9 +946,10 @@ def sliding_graphical_lasso(
                 You can check how to define them in {2}.
                 """.format(
                     none_values,
-                    {key: value for key, value in organism_values["human"].items()
+                    {key: value for key, value in organism_values[
+                        "human"].items()
                         if key in none_values},
-                    "/{citation/}"
+                    citation
                     )
             )
 
@@ -974,7 +966,7 @@ def sliding_graphical_lasso(
         distance_constraint = window_size / 2
 
     # AnnData object should have more than 1 cell
-    if anndata.X.shape[0] < 2 or anndata.X.shape[1] < 2:
+    if adata.X.shape[0] < 2 or adata.X.shape[1] < 2:
         raise ValueError(
             """
             Not enough cells/regions in the AnnData object.
@@ -982,9 +974,9 @@ def sliding_graphical_lasso(
             co-accessibility.
             """
         )
-    # print("Calculating penalty coefficient alpha...")
+
     alpha = average_alpha(
-        anndata,
+        adata,
         window_size=window_size,
         unit_distance=unit_distance,
         n_samples=n_samples,
@@ -997,142 +989,196 @@ def sliding_graphical_lasso(
         init_method=init_method,
         seed=seed,
     )
-    if verbose:
+    if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
 
-    start_slidings = [0, int(window_size / 2)]
+    # Custom log handler to capture log messages of distributed on memory
+    class ListLogHandler(logging.Handler):
+        def emit(self, record):
+            log_messages.append(self.format(record))
+    logger = logging.getLogger('distributed.worker.memory')
+    logger.setLevel(logging.WARNING)
+    logger.propagate = False
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    # List to store log messages
+    log_messages = []
+    handler = ListLogHandler()
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
+
+    try:
+        # TODO chr_progresses = Progress()
+        with LocalCluster(
+            n_workers=njobs,  # Number of workers (matches njobs from Joblib)
+            processes=False,   # Use processes for isolation
+            threads_per_worker=threads_per_worker,  # Single-threaded
+        ) as cluster, Client(cluster) as client:   # (best for CPU-bound tasks)
+
+            if verbose:
+                # Optional: Monitor your computation with the Dask dashboard
+                print(client.dashboard_link)
+
+            # Configure joblib to use the default joblib parameters
+            with parallel_config():
+                chr_results = Parallel(n_jobs=njobs)(delayed(
+                    chr_batch_graphical_lasso)(
+                    adata.X[:, (adata.var["chromosome"] == chromosome).values],
+                    adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                    chromosome,
+                    alpha,
+                    unit_distance,
+                    window_size,
+                    init_method,
+                    max_elements,
+                    n=n,
+                    disable_tqdm=(verbose < 1),
+                ) for n, chromosome in enumerate(
+                    adata.var["chromosome"].unique()))
+
+    except Exception as e:
+        logger.warning("Exception occurred: %s", e)
+
+    # Display collected log messages at the end of the script
+    if verbose >= 2:
+        print("Captured Warning Messages:")
+        for message in log_messages:
+            print(message)
+    else:
+        if len(log_messages) > 0:
+            print(
+                """
+                Logger: {} warnings message have been returned by distributed
+                about workers memory.\n
+                It's usually expected, but you can display them with verbose=2
+                """.format(len(log_messages)))
+
+    full_results = sp.sparse.block_diag(chr_results, format="csr")
+    return full_results
+
+
+def chr_batch_graphical_lasso(
+    chr_X,
+    chr_var,
+    chromosome,
+    alpha,
+    unit_distance,
+    window_size,
+    init_method,
+    max_elements,
+    n=0,
+    disable_tqdm=False,
+):
 
     results = {}
     idx_ = {}
     idy_ = {}
-    regions_list = anndata.var_names
-    # Get global indices of regions
-    map_indices = {regions_list[i]: i for i in range(len(regions_list))}
+    map_indices = {region: i for i, region in enumerate(chr_var.index)}
+    start_slidings = [0, int(window_size / 2)]
 
     for k in start_slidings:
         slide_results = {}
         slide_results["scores"] = np.array([])
-        slide_results["idx"] = np.array([])
-        slide_results["idy"] = np.array([])
-        idx_["window_" + str(k)] = np.array([])
-        idy_["window_" + str(k)] = np.array([])
+        slide_results["idx"] = np.array([], dtype=int)
+        slide_results["idy"] = np.array([], dtype=int)
+        idx_["window_" + str(k)] = np.array([], dtype=int)
+        idy_["window_" + str(k)] = np.array([], dtype=int)
 
-#        if k == 0:
-#            print("Starting to process chromosomes : {}".format(
-#                anndata.var["chromosome"].unique()))
-#        else:
-#            print("Finishing to process chromosomes : {}".format(
-#                anndata.var["chromosome"].unique()))
-        for chromosome in anndata.var["chromosome"].unique():
-            # Get start positions of windows
-            window_starts = [
-                i
-                for i in range(
-                    k,
-                    anndata.var["end"][
-                        anndata.var["chromosome"] == chromosome].max(),
-                    window_size,
-                )
-            ]
+        # Get start positions of windows
+        window_starts = [
+            i
+            for i in range(
+                k,
+                chr_var["end"][
+                    chr_var["chromosome"] == chromosome].max(),
+                window_size,
+            )
+        ]
 
-            idxs, subanndata_Xs, subanndata_vars = [], [], []
-            for start in track(
-                window_starts,
-                description="Calculating co-accessibility: {}, {}/2".format(
-                chromosome, (1 if k == 0 else 2)),):
-                end = start + window_size
-                # Get global indices of regions in the window
-                idx = np.where(
-                        (anndata.var["chromosome"] == chromosome)
-                        & (
-                            ((anndata.var["start"] > start)
-                             & (anndata.var["start"] < end-1))
-                            |
-                            ((anndata.var["end"] > start)
-                             & (anndata.var["end"] < end-1))
-                          )
-                        )[0]
-                if 1 < len(idx) <= max_elements:
-                    idxs.append(idx)
-                #subanndata_Xs.append(anndata[:, idxs[-1]].X)
-                #subanndata_vars.append(anndata[:, idxs[-1]].var)
-                #submap_indices = {k: v for k, v in map_indices.items() if k in subanndata_vars[-1].index.values}
-                
+        idxs = []
+        for start in window_starts:
+            end = start + window_size
+            # Get global indices of regions in the window
+            idx = np.where(
+                    ((chr_var["start"] > start)
+                     & (chr_var["start"] < end-1))
+                    |
+                    ((chr_var["end"] > start)
+                     & (chr_var["end"] < end-1))
+                    )[0]
+            if 1 < len(idx) <= max_elements:
+                idxs.append(idx)
                 x_, y_ = \
-                np.meshgrid(idxs[-1], idxs[-1])
+                    np.meshgrid(idxs[-1], idxs[-1])
                 idx_["window_" + str(k)], idy_["window_" + str(k)] = \
                     np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
                     np.concatenate([idy_["window_" + str(k)], y_.flatten()])
+        if idxs == []:
+            results["window_" + str(k)] = sp.sparse.coo_matrix(
+                (np.array([], dtype=int),
+                 (np.array([], dtype=int),
+                  np.array([], dtype=int))),
+                shape=(chr_X.shape[1], chr_X.shape[1]),
+            )
+            continue
+        # Use joblib.Parallel to run the function in parallel
+        # on the different chromosomes
+        parallel_lasso_results = Parallel(n_jobs=1, backend="threading")(
+            delayed(single_graphical_lasso)(
+                idx, chr_X, chr_var.iloc[idx, :],
+                alpha,
+                unit_distance,
+                init_method,
+                map_indices)
+            for idx in tqdm.tqdm(
+                idxs,
+                position=n, leave=False,
+                disable=disable_tqdm,
+                desc=f"Processing chromosome: '{chromosome}'"))
 
-            if idxs == []:
-                continue
+        # Unpack the results and concatenate the arrays
+        scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
 
-            # Use joblib.Parallel to run the function in parallel, no need to iterate over `b` unless it's required for something else
-            parallel_lasso_results = Parallel(n_jobs=njobs)(delayed(parallel_lasso_call)(
-                idx, anndata[:, idx].var, anndata[:, idx].X, alpha, unit_distance, init_method, map_indices) for idx in idxs)
-            
-            # Unpack the results and concatenate the arrays
-            scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
-            
-            # Concatenate the lists into the final result arrays
-            slide_results = {
-                "scores": np.concatenate([slide_results["scores"], *scores_list]),
-                "idx": np.concatenate([slide_results["idx"], *idx_list]),
-                "idy": np.concatenate([slide_results["idy"], *idy_list])
-            }
+        # Concatenate the lists into the final result arrays
+        slide_results = {
+            "scores": np.concatenate([slide_results["scores"], *scores_list]),
+            "idx": np.concatenate([slide_results["idx"], *idx_list]),
+            "idy": np.concatenate([slide_results["idy"], *idy_list])
+        }
         # Create sparse matrix
         results["window_" + str(k)] = sp.sparse.coo_matrix(
             (slide_results["scores"],
                 (slide_results["idx"], slide_results["idy"])),
-            shape=(anndata.X.shape[1], anndata.X.shape[1]),
+            shape=(chr_X.shape[1], chr_X.shape[1]),
         )
-    results = reconcile(results, idx_, idy_)
-
-    print("Done !")
-    return results
+    return reconcile(results, idx_, idy_)
 
 
-# Define the function call to be parallelized
-def parallel_lasso_call(idx, subanndata_var, subanndata_X, alpha, unit_distance, init_method, submap_indices):
-    corrected_scores, idx, idy = single_graphical_lasso(
-        idx,
-        subanndata_var,
-        subanndata_X,
-        alpha,
-        unit_distance,
-        init_method,
-        submap_indices
-    )
-    return corrected_scores, idx, idy
-
-
-def single_graphical_lasso(idx, anndata_var, anndata_X, alpha, unit_distance, init_method, map_indices):
-    # Add to the list of all regions used to know how many
-    # times each region is used
-    
-
-    # already global ?
-    # Get global indices of regions in the window
-    # idx = [map_indices[i] for i in regions_list[idx]]
+def single_graphical_lasso(
+    idx,
+    memmap_data,
+    anndata_var,
+    alpha,
+    unit_distance,
+    init_method, map_indices
+):
 
     if idx is None or len(idx) <= 1:
-        # print("Less than two regions in window")
-        return np.array([]), np.array([]), np.array([])
+        return np.array([], dtype=int), \
+            np.array([], dtype=int), \
+            np.array([], dtype=int)
 
+    memmap_subset = memmap_data[:, idx]
     # Get submatrix
-    if sp.sparse.issparse(anndata_X):
-        window_accessibility = anndata_X.toarray()
-        window_scores = np.cov(window_accessibility, rowvar=False)
-        window_scores = window_scores + 1e-4 * np.eye(
-            len(window_scores))
+    if sp.sparse.issparse(memmap_subset):
+        window_scores = np.cov(memmap_subset.toarray(), rowvar=False) + \
+            1e-4 * np.eye(memmap_subset.shape[1])
 
     else:
-        window_accessibility = anndata_X.copy()
-        window_scores = np.cov(window_accessibility, rowvar=False)
-        window_scores = window_scores + 1e-4 * np.eye(
-            len(window_scores))
+        window_scores = np.cov(memmap_subset, rowvar=False) + \
+            1e-4 * np.eye(memmap_subset.shape[1])
 
-    
     distance = get_distances_regions_from_dataframe(anndata_var)
 
     # Test if distance is negative
@@ -1162,28 +1208,21 @@ def single_graphical_lasso(idx, anndata_var, anndata_X, alpha, unit_distance, in
     # Fit graphical lasso
     graph_lasso_model.fit(window_scores)
 
-    # Names of regions in the window
-    window_region_names = anndata_var.index.values.copy()
-
     # Transform to correlation matrix
-    scores = cov_to_corr(graph_lasso_model.covariance_)
-
-    # convert to sparse matrix the results
-    corrected_scores = sp.sparse.coo_matrix(
-        scores)
+    scores = sp.sparse.coo_matrix(
+        cov_to_corr(graph_lasso_model.covariance_))
 
     # Convert corrected_scores column
     # and row indices to global indices
     idx = [
         map_indices[name]
-        for name in window_region_names[corrected_scores.row]
+        for name in anndata_var.index.values[scores.row]
     ]
     idy = [
         map_indices[name]
-        for name in window_region_names[corrected_scores.col]
+        for name in anndata_var.index.values[scores.col]
     ]
-
-    return corrected_scores.data, idx, idy
+    return scores.data, idx, idy
 
 
 def reconcile(
@@ -1193,26 +1232,25 @@ def reconcile(
 ):
 
     results_keys = list(results_gl.keys())
-    print("Averaging co-accessibility scores across windows...")
-
     #################
     # To keep entries contained in 2 windows
-
     # sum of values per non-null locations
     average = reduce(lambda x, y: x+y,
                      [results_gl[k] for k in results_keys])
 
     # Initiate divider depending on number of overlapping windows
     divider = sp.sparse.csr_matrix(
-        ([1 for i in range(len(idx_gl[results_keys[0]]))],
-         (idx_gl[results_keys[0]].astype(int),
-          idy_gl[results_keys[0]].astype(int)))
+        (np.ones(len(idx_gl[results_keys[0]])),
+         (idx_gl[results_keys[0]],
+          idy_gl[results_keys[0]])),
+        shape=average.shape
     )
     for k in results_keys[1:]:
         divider = divider + sp.sparse.csr_matrix(
             ([1 for i in range(len(idx_gl[k]))],
-             (idx_gl[k].astype(int),
-              idy_gl[k].astype(int)))
+             (idx_gl[k],
+              idy_gl[k])),
+            shape=average.shape
         )
 
     # extract all values where there is no sign agreement between windows

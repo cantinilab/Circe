@@ -65,7 +65,7 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.4',
+    version='0.3.5',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
     long_description="None",
     author='Remi-Trimbour',
@@ -79,17 +79,19 @@ setup(
     ext_modules=cythonize(extensions, language_level=3),
     cmdclass={'build_ext': BuildExt},
     include_dirs=[numpy.get_include()],
-    options={'bdist_wheel':{'universal':True}},
+    options={'bdist_wheel': {'universal': True}},
     install_requires=[
         'Cython',
         'numpy<2.0.0',
         'pandas>=2.1.1',
-        'scikit-learn>=1.3.1',
+        'scikit-learn>=1.6',
         'joblib>=1.1.0',
         'scanpy>=1.8.1',
         'rich>=10.12.0',
+        'dask',
+        'distributed'
     ],
-    classifiers=[
-        # Add appropriate classifiers
-    ],
+    extras_require={
+        "downloads": ["pybiomart"],
+      }  # Only if user wants gene body infos
 )

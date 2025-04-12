@@ -27,8 +27,7 @@ def _init_coefs(X, method="corrcoef"):
     elif callable(method):
         return method(X)
     elif method == "precomputed":
-        init_cov = X.copy()
-        return init_cov, np.max(np.abs(np.triu(init_cov)))
+        return X, np.max(np.abs(np.triu(X)))
     else:
         raise ValueError(
             (
