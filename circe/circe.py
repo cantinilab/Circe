@@ -190,7 +190,7 @@ def compute_atac_network(
     seed=42,
     njobs=1,
     threads_per_worker=1,
-    verbose=1
+    verbose=0
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -786,7 +786,7 @@ def sliding_graphical_lasso(
     n_samples=100,
     n_samples_maxtry=500,
     init_method="precomputed",
-    verbose=1,
+    verbose=0,
     seed=42,
     njobs=1,
     threads_per_worker=1
