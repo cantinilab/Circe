@@ -215,7 +215,7 @@ def plot_connections(
     x_formatter = ScalarFormatter(useOffset=True, useMathText=True)
     x_formatter.set_scientific(False)
     ax.xaxis.set_major_formatter(x_formatter)
-    ax.xaxis.set_major_formatter('chr1-{x:1.0f}')
+    ax.xaxis.set_major_formatter(f'{chromosome}-{{x:.0f}}')
 
     ticks = [tick for tick in ax.get_yticks() if tick >= 0]
     ax.set_yticks(ticks)
