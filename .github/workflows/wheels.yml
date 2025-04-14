@@ -73,7 +73,7 @@ jobs:
 
           CIBW_ARCHS_MACOS: auto universal2
           SYSTEM_VERSION_COMPAT: 0
-          CIBW_SKIP: pp37-* pp38-* pp39-* pp31*-macosx*
+          CIBW_SKIP: pp37-* pp38-* pp39-* cp37-* cp38-* cp39-* pp31*-macosx*
 
       - name: Verify clean directory
         run: git diff --exit-code
