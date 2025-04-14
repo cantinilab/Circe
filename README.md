@@ -53,15 +53,27 @@ ci.compute_atac_network(atac)
 circe_network = ci.extract_atac_links(atac)
 ccans_module = ci.find_ccans(atac)
 ```
+
 ### Visualisation
 ```
-ci.plot_connections(
-    adata,
+fig, ax = plt.subplots(1, figsize = (20, 6))
+genes_df = ci.downloads.download_genes()
+
+ci.draw.plot_connections_genes(
+    connections=atac,  # Main parameters
+    genes=genes_df,
     chromosome="chr1",
-    start=1e7,
-    end=1.3e7)
+    start=50_000,
+    end=300_000,
+    gene_spacing=30_000,
+    abs_threshold=0.0,
+    y_lim_top=-0.01,   # Visual parameters
+    track_spacing=0.01,
+    track_width=0.01,
+    ax=ax
+)
 ```
-<img src="https://github.com/cantinilab/circe/raw/main/Figures/circe_figure.png" align="center"/>
+<img src="https://github.com/cantinilab/circe/raw/main/Figures/circe_figure_genes_access.png" align="center"/>
 
 ## Comparison to Cicero R package
 <br> *On the same metacells obtained from Cicero code.*
