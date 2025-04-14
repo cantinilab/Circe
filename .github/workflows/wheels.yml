@@ -1,6 +1,14 @@
 name: Wheels
 
-on: [pull_request, push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types: [published]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
