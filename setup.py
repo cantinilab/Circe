@@ -79,6 +79,7 @@ setup(
     url='https://github.com/cantinilab/circe',
     license='GPL-3.0-only',
     license_file='LICENSE.txt',
+    license_files=('LICENSE.txt',),
     packages=find_packages(),
     package_data={'': ['*']},
     python_requires='>=3.8,<4.0',
