@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Build SDist
         run: |
-          pip install build
+          pip install build twine packaging>=24.2
           python -m build --verbose
       - uses: pypa/cibuildwheel@v2.21
         env:
