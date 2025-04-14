@@ -21,7 +21,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y liblapack-dev
       - name: Build SDist
         run: |
-          pip install build twine
+          pip install --upgrade build twine packaging>=24.2
           python -m build
       - name: Check metadata
         run: python -m twine check dist/*
