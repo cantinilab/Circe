@@ -102,5 +102,5 @@ Performance on real dataset 2:
 It is currently developped to work with AnnData objects. Check Example1.ipynb for a simple usage example.
 
 ## Citation
-Trimbour Rémi (2024). Circe: Co-accessibility network from ATAC-seq data in python (based on Cicero package). Package version 0.2.0.
+Trimbour Rémi (2024). Circe: Co-accessibility network from ATAC-seq data in python (based on Cicero package). Package version 0.3.6.
 
