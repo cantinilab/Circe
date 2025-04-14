@@ -65,7 +65,7 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.6',
+    version='0.3.6.post1',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
     long_description="None",
     author='Remi-Trimbour',
@@ -95,3 +95,12 @@ setup(
         "downloads": ["pybiomart"],
       }  # Only if user wants gene body infos
 )
+
+
+# Note for the wheel:
+# The wheel is not universal because of the Cython extension module.
+# python -m build creates a wheel with the platform tag.
+# To build the package:
+# 1. python -m build
+# 2. use auditwheel to make it general for manyllinux platforms
+# 3. Use twine to upload the package to pypi with the tar.gz and the manylinux wheel
