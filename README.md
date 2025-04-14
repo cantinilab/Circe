@@ -9,33 +9,24 @@
 -----------------
 # CIRCE: Cis-regulatory interactions between chromatin regions
 [![Unit_Tests](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml/badge.svg)](https://github.com/cantinilab/circe/actions/workflows/codecov.yaml)
+[![Wheels](https://github.com/cantinilab/Circe/actions/workflows/wheels.yml/badge.svg)](https://github.com/cantinilab/Circe/actions/workflows/wheels.yml)
 [![codecov](https://codecov.io/gh/cantinilab/circe/graph/badge.svg?token=0OIFAP28D7)](https://codecov.io/gh/cantinilab/circe)
 [![PyPI version](https://img.shields.io/pypi/v/circe-py?color=blue)](https://img.shields.io/pypi/v/circe-py)
 [![Downloads](https://static.pepy.tech/badge/circe-py/month)](https://pepy.tech/project/circe-py)
-
 
 ## Description
 This repo contains a python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
 
 It is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
-
-<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
-
-_If you have any suggestion, don't hesitate ! This package is still a work in progress :)_
-
-
 ## Installation
 The package can be installed using pip:
-
 ```
 pip install circe-py
 ```
-
  and from github
 ```
 pip install "git+https://github.com/cantinilab/circe.git"
 ```
-*Warning: If you clone the repo, don't stay in the repo to run your script because python will import the non-compiled cython file (probable error: circe.pyquic does not have a quic function)*
 
 ## Minimal example
 ```
@@ -76,6 +67,9 @@ ci.draw.plot_connections_genes(
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/circe_figure_genes_access.png" align="center"/>
 
 ## Comparison to Cicero R package
+<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
+
+_If you have any suggestion, don't hesitate ! This package is still a work in progress :)_
 <br> *On the same metacells obtained from Cicero code.*
 
 All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility)
