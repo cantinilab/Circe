@@ -29,6 +29,9 @@ Author:
 Rémi Trimbour - remi.trimbour@gmail.com
 """
 
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 # setup.py
 from setuptools import setup, Extension, find_packages
 from setuptools.command.build_ext import build_ext
@@ -65,14 +68,17 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.6.post1',
+    version='0.3.6.post2',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
-    long_description="None",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Remi-Trimbour',
     author_email='remi.trimbour@pasteur.fr',
     maintainer='Remi-Trimbour',
     maintainer_email='remi.trimbour@gmail.com',
     url='https://github.com/cantinilab/circe',
+    license='GPL-3.0-only',
+    license_files=['LICENSE.txt'],
     packages=find_packages(),
     package_data={'': ['*']},
     python_requires='>=3.8,<4.0',

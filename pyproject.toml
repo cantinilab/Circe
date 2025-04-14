@@ -1,7 +1,7 @@
 # Project information -- not used kept for readability
 [tool.poetry]
 name = "circe-py"
-version = "0.3.6.post1"
+version = "0.3.6.post2"
 description = "Circe: Package for building co-accessibility networks from ATAC-seq data."
 authors = ["Rémi Trimbour <remi.trimbour@pasteur.fr>"]
 packages = [{include = "circe"}]
@@ -10,7 +10,7 @@ readme = "README.md"
 
 # Build dependencies
 [build-system]
-requires = ["wheel", "setuptools>=0.64", "numpy<2.0", "cython"]
+requires = ["wheel", "setuptools>=0.64", "numpy<2.0", "cython", "packaging>=24.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
