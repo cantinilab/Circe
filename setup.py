@@ -78,6 +78,7 @@ setup(
     maintainer_email='remi.trimbour@gmail.com',
     url='https://github.com/cantinilab/circe',
     license='GPL-3.0-only',
+    license_file=['LICENSE.txt'],
     license_files=['LICENSE.txt'],
     packages=find_packages(),
     package_data={'': ['*']},
