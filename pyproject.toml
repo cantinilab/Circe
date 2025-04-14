@@ -10,7 +10,7 @@ readme = "README.md"
 
 # Build dependencies
 [build-system]
-requires = ["wheel", "setuptools>=0.64", "numpy<2.0", "cython", "packaging>=24.2"]
+requires = ["wheel", "setuptools>=0.64", "numpy<2.0", "cython"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
