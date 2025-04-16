@@ -1,3 +1,5 @@
+GNU GENERAL PUBLIC LICENSE
+--------------------------
 Circe - Co-accessibility network from single-cell ATAC-seq data. Python code, based on Cicero package (in R). 
 
 Copyright (C) 2025 Trimbour Rémi
