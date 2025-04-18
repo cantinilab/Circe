@@ -1,14 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
 
-Circe - Co-accessibility network from single-cell ATAC-seq data. Python code, based on Cicero package (in R). 
-
-Copyright (C) 2025 Trimbour Rémi
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
