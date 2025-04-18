@@ -1,5 +1,5 @@
-GNU GENERAL PUBLIC LICENSE
---------------------------
+// SPDX-License-Identifier: GPL-3.0
+
 Circe - Co-accessibility network from single-cell ATAC-seq data. Python code, based on Cicero package (in R). 
 
 Copyright (C) 2025 Trimbour Rémi
