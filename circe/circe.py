@@ -761,6 +761,7 @@ def average_alpha(
             threads_per_worker=threads_per_worker,
             memory_limit="0",      # no nanny restarts; change if desired
         )
+        print(client.dashboard_link)
         created_client = True
 
     # ────────────────────────────────────────────────────────────────
@@ -769,7 +770,7 @@ def average_alpha(
     futures = [
         client.submit(
             _alpha_task,
-            adata.X[:, w].copy(),
+            adata[:, w].X.copy(),
             adata.var["chromosome"].to_numpy()[w],
             adata.var["start"].to_numpy()[w],
             adata.var["end"].to_numpy()[w],
@@ -783,6 +784,7 @@ def average_alpha(
         )
         for w in random_windows
     ]
+    print("numwindows", len(futures))
 
     # ────────────────────────────────────────────────────────────────
     # 3. Collect results until n_samples reached
@@ -804,7 +806,7 @@ def average_alpha(
                     if not f.done():
                         f.cancel()
                 break
-
+        print("len results", len(alpha_list))
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
@@ -1061,7 +1063,8 @@ def sliding_graphical_lasso(
         max_elements=max_elements,
         init_method=init_method,
         seed=seed,
-        threads_per_worker=njobs,
+        n_workers=njobs,
+        threads_per_worker=1,
     )
     if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
@@ -1096,7 +1099,7 @@ def sliding_graphical_lasso(
 
             # Configure joblib to use the default joblib parameters
             with parallel_config():
-                chr_results = Parallel(n_jobs=njobs)(delayed(
+                chr_results = Parallel(n_jobs=1)(delayed(
                     chr_batch_graphical_lasso)(
                     adata.X[:, (adata.var["chromosome"] == chromosome).values],
                     adata.var.loc[adata.var["chromosome"] == chromosome, :],
@@ -1107,6 +1110,7 @@ def sliding_graphical_lasso(
                     init_method,
                     max_elements,
                     n=n,
+                    njobs=njobs,
                     disable_tqdm=(verbose < 1),
                 ) for n, chromosome in enumerate(
                     adata.var["chromosome"].unique()))
@@ -1142,6 +1146,7 @@ def chr_batch_graphical_lasso(
     init_method,
     max_elements,
     n=0,
+    njobs=1,
     disable_tqdm=False,
 ):
 
@@ -1198,7 +1203,7 @@ def chr_batch_graphical_lasso(
             continue
         # Use joblib.Parallel to run the function in parallel
         # on the different chromosomes
-        parallel_lasso_results = Parallel(n_jobs=1, backend="threading")(
+        parallel_lasso_results = Parallel(n_jobs=njobs, backend="threading")(
             delayed(single_graphical_lasso)(
                 idx, chr_X, chr_var.iloc[idx, :],
                 alpha,
