@@ -614,7 +614,7 @@ def average_alpha(
     *,
     # NEW optional parameters for parallel execution
     client: Client | None = None,          # pass an existing Dask client or None
-    n_workers: int = 8,
+    n_workers: int = 1,
     threads_per_worker: int = 1,
 ):
     """"
@@ -1053,7 +1053,7 @@ def sliding_graphical_lasso(
         max_elements=max_elements,
         init_method=init_method,
         seed=seed,
-        n_workers=njobs,
+        threads_per_worker=njobs,
     )
     if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
