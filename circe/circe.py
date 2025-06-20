@@ -770,10 +770,10 @@ def average_alpha(
     futures = [
         client.submit(
             _alpha_task,
-            adata[:, w].X,
-            adata.var["chromosome"].values[w],
-            adata.var["start"].values[w],
-            adata.var["end"].values[w],
+            adata.X[:, w],
+            adata.var["chromosome"].to_numpy()[w],
+            adata.var["start"].to_numpy()[w],
+            adata.var["end"].to_numpy()[w],
             max_alpha_iteration=max_alpha_iteration,
             unit_distance=unit_distance,
             s=s,
@@ -820,6 +820,7 @@ def average_alpha(
         )
 
     return float(np.mean(alpha_list)) if alpha_list else np.nan
+
 
 def get_distances_regions_from_dataframe(df):
     """
