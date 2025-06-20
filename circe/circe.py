@@ -564,8 +564,14 @@ def local_alpha(
 #  Helper : one task = one window
 #  (defined outside to make it picklable; receives **only scalars + adata**)
 # ──────────────────────────────────────────────────────────────────────────────
-def _alpha_task(window,
-                adata,
+import numpy as np
+import pandas as pd
+
+def _alpha_task(X_window,
+                chromosomes,          # 1-D array[str]  (len = n_peaks)
+                starts,               # 1-D array[int]
+                ends,                 # 1-D array[int]
+                *,                    # -------- other keyword params --------
                 max_alpha_iteration,
                 unit_distance,
                 s,
@@ -573,13 +579,27 @@ def _alpha_task(window,
                 distance_parameter_convergence,
                 max_elements,
                 init_method):
-    """Return alpha for one window or None if unusable."""
-    this_adata = adata[:, window]
+    """
+    Compute alpha for a single genomic window, sending only the data that
+    matter to the worker (matrix slice + minimal metadata).
+    """
 
-    distances  = get_distances_regions(this_adata)
+    # ------------------------------------------------------------------
+    # 1. Rebuild a tiny DataFrame just for distances
+    # ------------------------------------------------------------------
+    var_df = pd.DataFrame({
+        "chromosome": chromosomes,
+        "start":      starts,
+        "end":        ends,
+    })
 
+    distances = get_distances_regions_from_dataframe(var_df)
+
+    # ------------------------------------------------------------------
+    # 2. Run local_alpha on the slice
+    # ------------------------------------------------------------------
     alpha = local_alpha(
-        X=this_adata.X,
+        X=X_window,
         distances=distances,
         maxit=max_alpha_iteration,
         unit_distance=unit_distance,
@@ -591,7 +611,6 @@ def _alpha_task(window,
     )
 
     return alpha if isinstance(alpha, (int, float)) else None
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  Main function (parallel version)
@@ -698,118 +717,107 @@ def average_alpha(
     ``dask[distributed]``, ``rich`` and ``anndata >= 0.9`` must be available.
     """
 
-    # ──────────────────────────────────────────────────────────────────
-    #  PRELUDE — generate the candidate windows exactly as before
-    # ──────────────────────────────────────────────────────────────────
-    start_slidings = [0, int(window_size / 2)]
-
+    # ────────────────────────────────────────────────────────────────
+    # 0. Build candidate windows (same logic as original function)
+    # ────────────────────────────────────────────────────────────────
+    start_slidings = [0, window_size // 2]
     window_starts = []
-    for k in start_slidings:
-        for chromosome in adata.var["chromosome"].unique():
-            if chromosomes_sizes is None:
-                chromosome_size = adata.var["end"][
-                    adata.var["chromosome"] == chromosome
-                ].max()
-            else:
-                chromosome_size = chromosomes_sizes.get(
-                    chromosome,
-                    adata.var["end"][adata.var["chromosome"] == chromosome].max(),
-                )
+    for off in start_slidings:
+        for chrom in adata.var["chromosome"].unique():
+            chr_size = (
+                chromosomes_sizes.get(chrom)
+                if chromosomes_sizes is not None
+                else adata.var["end"][adata.var["chromosome"] == chrom].max()
+            )
+            window_starts.extend((chrom, p)
+                                 for p in range(off, chr_size, window_size))
 
-            chr_window_starts = [
-                (chromosome, i)
-                for i in range(k, chromosome_size, window_size)
-            ]
-            window_starts.extend(chr_window_starts)
-
-    # Choose windows randomly up to n_samples_maxtry
     rng = np.random.default_rng(seed)
     rng.shuffle(window_starts)
 
-    random_windows = []
+    random_windows: list[np.ndarray] = []
     while len(random_windows) < n_samples_maxtry and window_starts:
-        n_to_choose = n_samples_maxtry - len(random_windows)
-        idx_windows = window_starts[:n_to_choose]
-        window_starts = window_starts[n_to_choose:]
-
-        for chromosome, start in idx_windows:
+        need = n_samples_maxtry - len(random_windows)
+        batch, window_starts = window_starts[:need], window_starts[need:]
+        for chrom, start in batch:
             end = start + window_size
             idx = np.where(
-                (adata.var["chromosome"] == chromosome)
+                (adata.var["chromosome"] == chrom)
                 & (
                     ((adata.var["start"] > start) & (adata.var["start"] < end - 1))
                     | ((adata.var["end"] > start) & (adata.var["end"] < end - 1))
                 )
             )[0]
-
             if 0 < len(idx) < max_elements:
                 random_windows.append(idx)
 
-    # ──────────────────────────────────────────────────────────────────
-    #  DASK SET-UP (start a local cluster if the caller did not supply one)
-    # ──────────────────────────────────────────────────────────────────
+    # ────────────────────────────────────────────────────────────────
+    # 1. Dask client (local if none supplied)
+    # ────────────────────────────────────────────────────────────────
     created_client = False
     if client is None:
-        client = Client(n_workers=n_workers, threads_per_worker=threads_per_worker, memory_limit="0")
+        client = Client(
+            n_workers=n_workers,
+            threads_per_worker=threads_per_worker,
+            memory_limit="0",      # no nanny restarts; change if desired
+        )
         created_client = True
 
-    # broadcast adata once
-    adata_fut = client.scatter(adata, broadcast=True)
-
-    # Submit **at most** the number of windows we have
-    futures = client.map(
-        _alpha_task,
-        random_windows,
-        adata=adata_fut,
-        max_alpha_iteration=max_alpha_iteration,
-        unit_distance=unit_distance,
-        s=s,
-        distance_constraint=distance_constraint,
-        distance_parameter_convergence=distance_parameter_convergence,
-        max_elements=max_elements,
-        init_method=init_method,
-    )
-
-    # ──────────────────────────────────────────────────────────────────
-    #  STREAM RESULTS
-    # ──────────────────────────────────────────────────────────────────
-    alpha_list = []
-    with Progress() as rich_progress:
-        bar = rich_progress.add_task(
-            "Calculating alpha", total=n_samples, auto_refresh=False
+    # ────────────────────────────────────────────────────────────────
+    # 2. Submit ALL windows immediately
+    # ────────────────────────────────────────────────────────────────
+    futures = [
+        client.submit(
+            _alpha_task,
+            adata.X[:, w].copy(),
+            adata.var["chromosome"].to_numpy()[w],
+            adata.var["start"].to_numpy()[w],
+            adata.var["end"].to_numpy()[w],
+            max_alpha_iteration=max_alpha_iteration,
+            unit_distance=unit_distance,
+            s=s,
+            distance_constraint=distance_constraint,
+            distance_parameter_convergence=distance_parameter_convergence,
+            max_elements=max_elements,
+            init_method=init_method,
         )
+        for w in random_windows
+    ]
+
+    # ────────────────────────────────────────────────────────────────
+    # 3. Collect results until n_samples reached
+    # ────────────────────────────────────────────────────────────────
+    alpha_list: list[float] = []
+    with Progress() as prog:
+        bar = prog.add_task("Calculating alpha", total=n_samples, auto_refresh=False)
 
         for fut in as_completed(futures):
             alpha = fut.result()
-
             if alpha is not None:
                 alpha_list.append(alpha)
-                rich_progress.update(bar, advance=1)
-                rich_progress.refresh()
+                prog.update(bar, advance=1)
+                prog.refresh()
 
             if len(alpha_list) >= n_samples:
-                # Cancel whatever is still running or pending
+                # cancel leftovers and break
                 for f in futures:
                     if not f.done():
                         f.cancel()
                 break
 
-    # Clean-up the temporary client if we started it
+    # ────────────────────────────────────────────────────────────────
+    # 4. Clean-up & return
+    # ────────────────────────────────────────────────────────────────
     if created_client:
         client.close()
 
-    # ──────────────────────────────────────────────────────────────────
-    #  POST-PROCESS  (unchanged)
-    # ──────────────────────────────────────────────────────────────────
     if len(alpha_list) < n_samples and verbose:
         warnings.warn(
-            f"only {len(alpha_list)} windows were usable to calculate the "
-            f"penalty (requested {n_samples}).",
+            f"only {len(alpha_list)} windows were usable (requested {n_samples}).",
             UserWarning,
         )
 
     return float(np.mean(alpha_list)) if alpha_list else np.nan
-
 
 def get_distances_regions_from_dataframe(df):
     """
