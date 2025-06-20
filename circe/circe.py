@@ -11,6 +11,13 @@ from typing import Union
 from dask.distributed import LocalCluster, Client
 from joblib import Parallel, delayed, parallel_config
 import tqdm
+# ──────────────────────────────────────────────────────────────────────────────
+import numpy as np
+import warnings, time, itertools
+from rich.progress import Progress
+
+from dask.distributed import Client, as_completed                # NEW
+
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
@@ -549,201 +556,259 @@ def local_alpha(
     return distance_parameter
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+#  Required extra dependency
+#       pip install "dask[distributed]" rich
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  Helper : one task = one window
+#  (defined outside to make it picklable; receives **only scalars + adata**)
+# ──────────────────────────────────────────────────────────────────────────────
+def _alpha_task(window,
+                adata,
+                max_alpha_iteration,
+                unit_distance,
+                s,
+                distance_constraint,
+                distance_parameter_convergence,
+                max_elements,
+                init_method):
+    """Return alpha for one window or None if unusable."""
+    this_adata = adata[:, window]
+
+    distances  = get_distances_regions(this_adata)
+
+    alpha = local_alpha(
+        X=this_adata.X,
+        distances=distances,
+        maxit=max_alpha_iteration,
+        unit_distance=unit_distance,
+        s=s,
+        distance_constraint=distance_constraint,
+        distance_parameter_convergence=distance_parameter_convergence,
+        max_elements=max_elements,
+        init_method=init_method,
+    )
+
+    return alpha if isinstance(alpha, (int, float)) else None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  Main function (parallel version)
+# ──────────────────────────────────────────────────────────────────────────────
 def average_alpha(
     adata,
-    window_size=500000,
-    unit_distance=1000,
+    window_size=500_000,
+    unit_distance=1_000,
     n_samples=100,
     n_samples_maxtry=500,
     max_alpha_iteration=100,
     s=0.75,
-    distance_constraint=250000,
+    distance_constraint=250_000,
     distance_parameter_convergence=1e-22,
     max_elements=200,
     chromosomes_sizes=None,
     init_method="precomputed",
     seed=42,
-    verbose=False
+    verbose=False,
+    *,
+    # NEW optional parameters for parallel execution
+    client: Client | None = None,          # pass an existing Dask client or None
+    n_workers: int = 8,
+    threads_per_worker: int = 1,
 ):
-    """
-    Calculate average alpha coefficient that determines the sparsity penalty
-    term in the graphical lasso penalty used for the sliding graphical lasso.
-    (The global penalty also uses distance between regions).
-    The alpha coefficient is calculated by averaging alpha values from
-    'n_samples' windows, such as there's less than 5% of possible long-range
-    edges (> distance_constraint) and less than 20% co-accessible regions in
-    each window.
+    """"
+    Estimate the **global sparsity‐penalty coefficient α** used by
+    _sliding graphical lasso_ on scATAC-seq data.
+
+    The function samples `n_samples` genomic windows, fits an “individual”
+    α for each window (via :func:`local_alpha`) and returns their average.
+    Windows that do not satisfy quality criteria (size < ``max_elements``,
+    <5 % long-range edges, <20 % co-accessible regions) are skipped.
+
+    Parallel implementation
+    -----------------------
+    • One genomic window = one task executed in a Dask cluster.  
+    • The full :class:`anndata.AnnData` object is broadcast to workers.
+    • Tasks stream back through :func:`dask.distributed.as_completed`; as soon
+      as `n_samples` usable α’s are collected, the remaining tasks are
+      cancelled.
 
     Parameters
     ----------
-    adata : anndata object
-        anndata object with var_names as region names.
-    window_size : int, optional
-        Size of the sliding window, where co-accessible regions can be found.
-        The default is 500000 (Human/Mouse value). This parameter is organism
-        specific.
-    unit_distance : int, optional
-        Unit distance (in base pair) to divide distance by.
-        The default is 1000 and should be change carefully (in regards to
-        the distance between regions).
-    n_samples : int, optional
-        Number of windows used to calculate average optimal penalty coefficient
-        alpha. The default is 100.
-    n_samples_maxtry : int, optional
-        Maximum number of windows to try to calculate optimal penalty
-        coefficient alpha. Should be higher than n_samples. The default is 500.
-    max_alpha_iteration : int, optional
-        Maximum number of iterations to converge optimal penalty coefficient.
-        The default is 100.
-    s : float, optional
-        Parameter for penalizing long-range edges. The default is 0.75
-        (Human/Mouse value). This parameter is organism specific.
-    distance_constraint : int, optional
-        Distance threshold for defining long-range edges. It is used to fit the
-        penalty coefficient alpha. The default is 250000 (Human/Mouse value).
-        This parameter is organism specific and usually half of window_size.
-    distance_parameter_convergence : float, optional
-        Convergence parameter for alpha (penalty) coefficiant calculation.
-        The default is 1e-22.
-    max_elements : int, optional
-        Maximum number of regions in a window. The default is 200.
+    adata : anndata.AnnData
+        Input accessibility matrix with ``var`` containing at least the
+        columns ``chromosome``, ``start`` and ``end`` (0-based, half-open).
+    window_size : int, default 500_000
+        Genomic size (bp) of the sliding window.
+    unit_distance : int, default 1_000
+        Unit (bp) used to rescale genomic distances prior to penalty
+        weighting.
+    n_samples : int, default 100
+        Number of windows retained to compute the average α.
+    n_samples_maxtry : int, default 500
+        Maximum number of candidate windows to inspect in order to obtain
+        `n_samples` valid ones.
+    max_alpha_iteration : int, default 100
+        Maximum iterations in the fixed-point search performed by
+        :func:`local_alpha`.
+    s : float, default 0.75
+        Long-range penalty exponent (organism specific).
+    distance_constraint : int, default 250_000
+        Threshold (bp) above which an edge is considered long-range.
+    distance_parameter_convergence : float, default 1e-22
+        Convergence criterion for α.
+    max_elements : int, default 200
+        Upper bound on the number of regions (columns) allowed in a window.
     chromosomes_sizes : dict, optional
-        Dictionary with chromosome names as keys and sizes as values.
-        The default is None, and will use the maximum end position of each
-        chromosome in anndata.var.
-    init_method : str, optional
-        Method to use to compute initial covariance matrix.
-        The default is "precomputed".
-        SHOULD BE CHANGED CAREFULLY.
-    seed : int, optional
-        Seed for random number generator. The default is 42.
-    verbose : bool, optional
-        Print alpha coefficient and number of windows used to
-        calculate it if inferior to n_samples. The default is False.
+        Mapping ``{chromosome: size_in_bp}``.  
+        By default the maximum ``end`` coordinate found in `adata.var`
+        is used for each chromosome.
+    init_method : {"precomputed", ...}, default "precomputed"
+        Initialisation method forwarded to :func:`local_alpha`.
+    seed : int, default 42
+        Random seed used for the window shuffle.
+    verbose : bool, default False
+        Emit warnings when fewer than `n_samples` usable windows are found.
+
+    Parallel-execution options
+    --------------------------
+    client : dask.distributed.Client, optional
+        Existing Dask client / cluster.  When *None* (default) a **local**
+        cluster is started with the resources below and shut down on exit.
+    n_workers : int, default 8
+        Number of worker processes in the auto-started local cluster (ignored
+        if `client` is provided).
+    threads_per_worker : int, default 1
+        Number of OS threads per worker process.
 
     Returns
     -------
     alpha : float
-        Average alpha coefficient.
+        Mean sparsity-penalty coefficient across the selected windows.
+        ``nan`` if no window satisfied the criteria.
+
+    Warnings
+    --------
+    A :class:`UserWarning` is raised (when ``verbose=True``) if fewer than
+    `n_samples` windows pass the filters.
+
+    Dependencies
+    ------------
+    ``dask[distributed]``, ``rich`` and ``anndata >= 0.9`` must be available.
     """
+
+    # ──────────────────────────────────────────────────────────────────
+    #  PRELUDE — generate the candidate windows exactly as before
+    # ──────────────────────────────────────────────────────────────────
     start_slidings = [0, int(window_size / 2)]
 
     window_starts = []
     for k in start_slidings:
-        slide_results = {}
-        slide_results["scores"] = np.array([])
-        slide_results["idx"] = np.array([])
-        slide_results["idy"] = np.array([])
         for chromosome in adata.var["chromosome"].unique():
             if chromosomes_sizes is None:
                 chromosome_size = adata.var["end"][
-                    adata.var["chromosome"] == chromosome].max()
+                    adata.var["chromosome"] == chromosome
+                ].max()
             else:
-                try:
-                    chromosome_size = chromosomes_sizes[chromosome]
-                except Warning:
-                    print(
-                        "{} not found as key in chromosome_size, ".format(
-                            chromosome) +
-                        " using max end position.")
-                    chromosome_size = adata.var["end"][
-                        adata.var["chromosome"] == chromosome].max()
-            # Get start positions of windows
+                chromosome_size = chromosomes_sizes.get(
+                    chromosome,
+                    adata.var["end"][adata.var["chromosome"] == chromosome].max(),
+                )
+
             chr_window_starts = [
                 (chromosome, i)
-                for i in range(
-                    k,
-                    chromosome_size,
-                    window_size,
-                )
+                for i in range(k, chromosome_size, window_size)
             ]
-            window_starts += chr_window_starts
+            window_starts.extend(chr_window_starts)
+
+    # Choose windows randomly up to n_samples_maxtry
+    rng = np.random.default_rng(seed)
+    rng.shuffle(window_starts)
 
     random_windows = []
-    rng = np.random.default_rng(seed=seed)
-    rng.shuffle(window_starts)
-    while len(random_windows) < n_samples_maxtry:
-        n_window_to_choose = n_samples_maxtry-len(random_windows)
-        idx_windows = window_starts[0:n_window_to_choose]
-        if len(idx_windows) == 0:
-            break
-        window_starts = window_starts[n_window_to_choose:]
+    while len(random_windows) < n_samples_maxtry and window_starts:
+        n_to_choose = n_samples_maxtry - len(random_windows)
+        idx_windows = window_starts[:n_to_choose]
+        window_starts = window_starts[n_to_choose:]
 
         for chromosome, start in idx_windows:
             end = start + window_size
-            # Get global indices of regions in the window
             idx = np.where(
                 (adata.var["chromosome"] == chromosome)
                 & (
-                    ((adata.var["start"] > start)
-                     & (adata.var["start"] < end-1))
-                    |
-                    ((adata.var["end"] > start)
-                     & (adata.var["end"] < end-1))
-                  )
-                )[0]
+                    ((adata.var["start"] > start) & (adata.var["start"] < end - 1))
+                    | ((adata.var["end"] > start) & (adata.var["end"] < end - 1))
+                )
+            )[0]
 
-            if 0 < len(idx) < 200:
+            if 0 < len(idx) < max_elements:
                 random_windows.append(idx)
 
-    # While loop to calculate alpha until n_samples measures are obtained
-    with Progress() as progress:
-        bar_alpha = progress.add_task(
-            "Calculating alpha", total=n_samples, auto_refresh=False)
-        alpha_list = []
+    # ──────────────────────────────────────────────────────────────────
+    #  DASK SET-UP (start a local cluster if the caller did not supply one)
+    # ──────────────────────────────────────────────────────────────────
+    created_client = False
+    if client is None:
+        client = Client(n_workers=n_workers, threads_per_worker=threads_per_worker)
+        created_client = True
 
-        while not progress.finished:
-            for window in random_windows:
-                # Calculate distances between regions
-                distances = get_distances_regions(
-                    adata[:, window]
-                    )
+    # broadcast adata once
+    adata_fut = client.scatter(adata, broadcast=True)
 
-                # Calculate individual alpha
-                alpha = local_alpha(
-                    X=adata[:, window].X,
-                    distances=distances,
-                    maxit=max_alpha_iteration,
-                    unit_distance=unit_distance,
-                    s=s,
-                    distance_constraint=distance_constraint,
-                    distance_parameter_convergence=distance_parameter_convergence,
-                    max_elements=max_elements,
-                    init_method=init_method
-                )
+    # Submit **at most** the number of windows we have
+    futures = client.map(
+        _alpha_task,
+        random_windows,
+        adata=adata_fut,
+        max_alpha_iteration=max_alpha_iteration,
+        unit_distance=unit_distance,
+        s=s,
+        distance_constraint=distance_constraint,
+        distance_parameter_convergence=distance_parameter_convergence,
+        max_elements=max_elements,
+        init_method=init_method,
+    )
 
-                # Append alpha to alpha_list if it's a number and not None
-                if isinstance(alpha, int) or isinstance(alpha, float):
-                    alpha_list.append(alpha)
-                    progress.update(bar_alpha, advance=1)
-                    progress.refresh()
-                else:
-                    pass
+    # ──────────────────────────────────────────────────────────────────
+    #  STREAM RESULTS
+    # ──────────────────────────────────────────────────────────────────
+    alpha_list = []
+    with Progress() as rich_progress:
+        bar = rich_progress.add_task(
+            "Calculating alpha", total=n_samples, auto_refresh=False
+        )
 
-                # Break the loop if n_samples is reached
-                if len(alpha_list) >= n_samples:
-                    time.sleep(0.001)
-                    break
-            # Break the while loop too if n_samples is reached
-            break
+        for fut in as_completed(futures):
+            alpha = fut.result()
 
-    # Print warning if n_samples is not reached
-    if len(alpha_list) < n_samples:
-        if verbose:
-            warnings.warn(
-                """
-                only {} windows will be used to calculate optimal penalty,
-                wasn't able to find {} windows with a non-null number
-                of regions inferior to max_elements={},
-                AND having long-range edges (>distance_constraint)
-                .""".format(
-                    len(alpha_list), n_samples, max_elements
-                ), UserWarning
-            )
+            if alpha is not None:
+                alpha_list.append(alpha)
+                rich_progress.update(bar, advance=1)
+                rich_progress.refresh()
 
-    # Calculate average alpha
-    alpha = np.mean(alpha_list)
-    return alpha
+            if len(alpha_list) >= n_samples:
+                # Cancel whatever is still running or pending
+                for f in futures:
+                    if not f.done():
+                        f.cancel()
+                break
+
+    # Clean-up the temporary client if we started it
+    if created_client:
+        client.close()
+
+    # ──────────────────────────────────────────────────────────────────
+    #  POST-PROCESS  (unchanged)
+    # ──────────────────────────────────────────────────────────────────
+    if len(alpha_list) < n_samples and verbose:
+        warnings.warn(
+            f"only {len(alpha_list)} windows were usable to calculate the "
+            f"penalty (requested {n_samples}).",
+            UserWarning,
+        )
+
+    return float(np.mean(alpha_list)) if alpha_list else np.nan
 
 
 def get_distances_regions_from_dataframe(df):
@@ -988,6 +1053,7 @@ def sliding_graphical_lasso(
         max_elements=max_elements,
         init_method=init_method,
         seed=seed,
+        n_workers=njobs,
     )
     if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
