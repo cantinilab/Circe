@@ -750,7 +750,7 @@ def average_alpha(
     # ──────────────────────────────────────────────────────────────────
     created_client = False
     if client is None:
-        client = Client(n_workers=n_workers, threads_per_worker=threads_per_worker)
+        client = Client(n_workers=n_workers, threads_per_worker=threads_per_worker, memory_limit="0")
         created_client = True
 
     # broadcast adata once
