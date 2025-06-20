@@ -631,7 +631,7 @@ def _build_payload(adata, window_idx):
     Xw = adata[:, window_idx].X
 
     # 2. drop all-zero columns *while still sparse / as view*
-    if sp.issparse(Xw):
+    if sp.sparse.issparse(Xw):
         nz_cols = np.flatnonzero(Xw.getnnz(axis=0))
         if nz_cols.size < 2:
             return None
