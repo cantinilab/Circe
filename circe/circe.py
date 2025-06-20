@@ -565,9 +565,6 @@ def local_alpha(
 #  Helper : one task = one window
 #  (defined outside to make it picklable; receives **only scalars + adata**)
 # ──────────────────────────────────────────────────────────────────────────────
-import numpy as np
-import pandas as pd
-
 def _alpha_task(X_window,
                 chromosomes,          # 1-D array[str]  (len = n_peaks)
                 starts,               # 1-D array[int]
@@ -646,7 +643,7 @@ def _build_payload(adata, window_idx):
     # 3. trim metadata with the same mask
     chrom = adata.var["chromosome"].values[window_idx][nz_cols]
     start = adata.var["start"].values[window_idx][nz_cols]
-    end   = adata.var["end"].values[window_idx][nz_cols]
+    end = adata.var["end"].values[window_idx][nz_cols]
 
     return Xw, chrom, start, end
 
@@ -671,7 +668,7 @@ def average_alpha(
     verbose=False,
     *,
     # NEW optional parameters for parallel execution
-    client: Client | None = None,          # pass an existing Dask client or None
+    client: Client | None = None,  # pass an existing Dask client or None
     n_workers: int = 1,
     threads_per_worker: int = 1,
 ):
@@ -843,8 +840,6 @@ def average_alpha(
             end_list)
     ]
 
-    print("numwindows", len(futures))
-
     # ────────────────────────────────────────────────────────────────
     # 3. Collect results until n_samples reached
     # ────────────────────────────────────────────────────────────────
@@ -865,7 +860,9 @@ def average_alpha(
                     if not f.done():
                         f.cancel()
                 break
-        print("len results", len(alpha_list))
+        if verbose:
+            print("Calculating alpha over {} windows.".format(len(alpha_list)))
+
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
