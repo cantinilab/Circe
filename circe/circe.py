@@ -11,6 +11,7 @@ from typing import Union
 from dask.distributed import LocalCluster, Client
 from joblib import Parallel, delayed, parallel_config
 import tqdm
+import random
 # ──────────────────────────────────────────────────────────────────────────────
 import numpy as np
 import warnings, time, itertools
@@ -612,6 +613,25 @@ def _alpha_task(X_window,
 
     return alpha if isinstance(alpha, (int, float)) else None
 
+
+def _build_payload(adata, window_idx):
+    """
+    Return (X_trimmed, chrom, start, end) for one window,
+    or None if the window is completely empty.
+    """
+    Xw = adata.X[:, window_idx]                 # sparse CSR/CSC
+    nz_cols = np.flatnonzero(Xw.getnnz(axis=0)) # indices that contain ≥1 non-zero
+
+    if nz_cols.size < 2:                        # nothing to analyse
+        return None
+
+    Xw = Xw[:, nz_cols].copy()                  # make an owned sparse slice
+    chrom  = adata.var["chromosome"].values[window_idx][nz_cols]
+    start  = adata.var["start"].values[window_idx][nz_cols]
+    end    = adata.var["end"].values[window_idx][nz_cols]
+    return Xw, chrom, start, end
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 #  Main function (parallel version)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -732,7 +752,7 @@ def average_alpha(
             window_starts.extend((chrom, p)
                                  for p in range(off, chr_size, window_size))
 
-    rng = np.random.default_rng(seed)
+    rng = random.Random(seed)
     rng.shuffle(window_starts)
 
     random_windows: list[np.ndarray] = []
@@ -767,13 +787,28 @@ def average_alpha(
     # ────────────────────────────────────────────────────────────────
     # 2. Submit ALL windows immediately
     # ────────────────────────────────────────────────────────────────
+
+    # ------------------------------------------------------------------
+    # 0.  Build payloads on the client  (list-comprehension version)
+    # ------------------------------------------------------------------
+    payloads = [p                           # keep tuple or skip
+                for w in random_windows
+                if (p := _build_payload(adata, w)) is not None]
+
+    if not payloads:                        # no informative windows
+        raise RuntimeError("No informative windows found")
+
+    # unzip the list of tuples into four parallel lists
+    X_list, chrom_list, start_list, end_list = map(list, zip(*payloads))
+
+    # 1. scatter only the big sparse matrices
+    X_futures = client.scatter(X_list, broadcast=False)
+
+    # 2. submit the computation tasks
     futures = [
         client.submit(
             _alpha_task,
-            adata.X[:, w],
-            adata.var["chromosome"].to_numpy()[w],
-            adata.var["start"].to_numpy()[w],
-            adata.var["end"].to_numpy()[w],
+            Xf, chrom, start, end,
             max_alpha_iteration=max_alpha_iteration,
             unit_distance=unit_distance,
             s=s,
@@ -782,8 +817,13 @@ def average_alpha(
             max_elements=max_elements,
             init_method=init_method,
         )
-        for w in random_windows
+        for Xf, chrom, start, end in zip(
+            X_futures,
+            chrom_list,
+            start_list,
+            end_list)
     ]
+
     print("numwindows", len(futures))
 
     # ────────────────────────────────────────────────────────────────
