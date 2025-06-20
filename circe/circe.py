@@ -616,19 +616,38 @@ def _alpha_task(X_window,
 
 def _build_payload(adata, window_idx):
     """
-    Return (X_trimmed, chrom, start, end) for one window,
-    or None if the window is completely empty.
+    Build the payload for one genomic window.
+
+    Returns
+    -------
+    (X_window, chrom, start, end)   : tuple
+        X_window  : sparse *or* dense array with empty columns removed
+        chrom     : 1-D array of chromosome names (len = n_peaks_kept)
+        start     : 1-D int array of start coordinates
+        end       : 1-D int array of end coordinates
+    None                             : if the window has < 2 non-zero columns
     """
-    Xw = adata.X[:, window_idx]                 # sparse CSR/CSC
-    nz_cols = np.flatnonzero(Xw.getnnz(axis=0)) # indices that contain ≥1 non-zero
+    # 1. take the window slice (still sparse or dense, but thin -> n_cells × m)
+    Xw = adata[:, window_idx].X
 
-    if nz_cols.size < 2:                        # nothing to analyse
-        return None
+    # 2. drop all-zero columns *while still sparse / as view*
+    if sp.issparse(Xw):
+        nz_cols = np.flatnonzero(Xw.getnnz(axis=0))
+        if nz_cols.size < 2:
+            return None
+        # sparse slice already copies the relevant data/indices/indptr
+        Xw = Xw[:, nz_cols]
+    else:                                # dense ndarray
+        nz_cols = np.flatnonzero((Xw != 0).any(axis=0))
+        if nz_cols.size < 2:
+            return None
+        Xw = Xw[:, nz_cols].copy()       # ensure independent buffer!
 
-    Xw = Xw[:, nz_cols].copy()                  # make an owned sparse slice
-    chrom  = adata.var["chromosome"].values[window_idx][nz_cols]
-    start  = adata.var["start"].values[window_idx][nz_cols]
-    end    = adata.var["end"].values[window_idx][nz_cols]
+    # 3. trim metadata with the same mask
+    chrom = adata.var["chromosome"].values[window_idx][nz_cols]
+    start = adata.var["start"].values[window_idx][nz_cols]
+    end   = adata.var["end"].values[window_idx][nz_cols]
+
     return Xw, chrom, start, end
 
 
