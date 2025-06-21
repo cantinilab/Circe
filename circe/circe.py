@@ -765,6 +765,8 @@ def average_alpha(
     # ────────────────────────────────────────────────────────────────
     # 0. Build candidate windows (same logic as original function)
     # ────────────────────────────────────────────────────────────────
+    if verbose:
+        print("Extracting chromosome sizes...")
     start_slidings = [0, window_size // 2]
     window_starts = []
     for off in start_slidings:
@@ -779,7 +781,8 @@ def average_alpha(
 
     rng = random.Random(seed)
     rng.shuffle(window_starts)
-
+    if verbose:
+        print("Selecting {} genomic windows...".format(n_samples_maxtry))
     random_windows: list[np.ndarray] = []
     while len(random_windows) < n_samples_maxtry and window_starts:
         need = n_samples_maxtry - len(random_windows)
@@ -820,6 +823,8 @@ def average_alpha(
         # ------------------------------------------------------------------
         # 0.  Build payloads on the client  (list-comprehension version)
         # ------------------------------------------------------------------
+        if verbose:
+            print("Building payloads for {} windows...".format(len(random_windows)))
         payloads = [p                           # keep tuple or skip
                     for w in random_windows
                     if (p := _build_payload(adata, w)) is not None]
