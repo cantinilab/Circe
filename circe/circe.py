@@ -795,7 +795,8 @@ def average_alpha(
         client = Client(
             n_workers=n_workers,
             threads_per_worker=threads_per_worker,
-            memory_limit="0",      # no nanny restarts; change if desired
+            memory_limit="0",
+            timeout="60s"  # allow time for shutdown
         )
         print(client.dashboard_link)
         created_client = True
