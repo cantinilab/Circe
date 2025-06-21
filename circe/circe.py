@@ -1144,6 +1144,7 @@ def sliding_graphical_lasso(
         seed=seed,
         n_workers=njobs,
         threads_per_worker=1,
+        verbose=verbose
     )
     if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
