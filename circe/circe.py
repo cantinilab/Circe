@@ -800,75 +800,76 @@ def average_alpha(
         print(client.dashboard_link)
         created_client = True
 
-    # ────────────────────────────────────────────────────────────────
-    # 2. Submit ALL windows immediately
-    # ────────────────────────────────────────────────────────────────
+    # ``nullcontext`` does nothing, so the same ``with`` line works
+    # for both cases
+    with (nullcontext(client) if created_client is False else client) as cl:
 
-    # ------------------------------------------------------------------
-    # 0.  Build payloads on the client  (list-comprehension version)
-    # ------------------------------------------------------------------
-    payloads = [p                           # keep tuple or skip
-                for w in random_windows
-                if (p := _build_payload(adata, w)) is not None]
+        # ────────────────────────────────────────────────────────────────
+        # 2. Submit ALL windows immediately
+        # ────────────────────────────────────────────────────────────────
 
-    if not payloads:                        # no informative windows
-        raise RuntimeError("No informative windows found")
+        # ------------------------------------------------------------------
+        # 0.  Build payloads on the client  (list-comprehension version)
+        # ------------------------------------------------------------------
+        payloads = [p                           # keep tuple or skip
+                    for w in random_windows
+                    if (p := _build_payload(adata, w)) is not None]
 
-    # unzip the list of tuples into four parallel lists
-    X_list, chrom_list, start_list, end_list = map(list, zip(*payloads))
+        if not payloads:                        # no informative windows
+            raise RuntimeError("No informative windows found")
 
-    # 1. scatter only the big sparse matrices
-    X_futures = client.scatter(X_list, broadcast=False)
+        # unzip the list of tuples into four parallel lists
+        X_list, chrom_list, start_list, end_list = map(list, zip(*payloads))
 
-    # 2. submit the computation tasks
-    futures = [
-        client.submit(
-            _alpha_task,
-            Xf, chrom, start, end,
-            max_alpha_iteration=max_alpha_iteration,
-            unit_distance=unit_distance,
-            s=s,
-            distance_constraint=distance_constraint,
-            distance_parameter_convergence=distance_parameter_convergence,
-            max_elements=max_elements,
-            init_method=init_method,
-        )
-        for Xf, chrom, start, end in zip(
-            X_futures,
-            chrom_list,
-            start_list,
-            end_list)
-    ]
+        # 1. scatter only the big sparse matrices
+        X_futures = client.scatter(X_list, broadcast=False)
 
-    # ────────────────────────────────────────────────────────────────
-    # 3. Collect results until n_samples reached
-    # ────────────────────────────────────────────────────────────────
-    alpha_list: list[float] = []
-    with Progress() as prog:
-        bar = prog.add_task("Calculating alpha", total=n_samples, auto_refresh=False)
+        # 2. submit the computation tasks
+        futures = [
+            client.submit(
+                _alpha_task,
+                Xf, chrom, start, end,
+                max_alpha_iteration=max_alpha_iteration,
+                unit_distance=unit_distance,
+                s=s,
+                distance_constraint=distance_constraint,
+                distance_parameter_convergence=distance_parameter_convergence,
+                max_elements=max_elements,
+                init_method=init_method,
+            )
+            for Xf, chrom, start, end in zip(
+                X_futures,
+                chrom_list,
+                start_list,
+                end_list)
+        ]
 
-        for fut in as_completed(futures):
-            alpha = fut.result()
-            if alpha is not None:
-                alpha_list.append(alpha)
-                prog.update(bar, advance=1)
-                prog.refresh()
+        # ────────────────────────────────────────────────────────────────
+        # 3. Collect results until n_samples reached
+        # ────────────────────────────────────────────────────────────────
+        alpha_list: list[float] = []
+        with Progress() as prog:
+            bar = prog.add_task("Calculating alpha", total=n_samples, auto_refresh=False)
 
-            if len(alpha_list) >= n_samples:
-                # cancel leftovers and break
-                for f in futures:
-                    if not f.done():
-                        f.cancel()
-                break
-        if verbose:
-            print("Calculating alpha over {} windows.".format(len(alpha_list)))
+            for fut in as_completed(futures):
+                alpha = fut.result()
+                if alpha is not None:
+                    alpha_list.append(alpha)
+                    prog.update(bar, advance=1)
+                    prog.refresh()
+
+                if len(alpha_list) >= n_samples:
+                    # cancel leftovers and break
+                    for f in futures:
+                        if not f.done():
+                            f.cancel()
+                    break
+            if verbose:
+                print("Calculating alpha over {} windows.".format(len(alpha_list)))
 
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
-    if created_client:
-        client.close()
-
     if len(alpha_list) < n_samples and verbose:
         warnings.warn(
             f"only {len(alpha_list)} windows were usable (requested {n_samples}).",
