@@ -628,18 +628,10 @@ def _build_payload(adata, window_idx):
     # 1. take the window slice (still sparse or dense, but thin -> n_cells × m)
     Xw = adata[:, window_idx].X
 
-    # 2. drop all-zero columns *while still sparse / as view*
-    if sp.sparse.issparse(Xw):
-        nz_cols = np.flatnonzero(Xw.getnnz(axis=0))
-        if nz_cols.size < 2:
-            return None
-        # sparse slice already copies the relevant data/indices/indptr
-        Xw = Xw[:, nz_cols]
-    else:                                # dense ndarray
-        nz_cols = np.flatnonzero((Xw != 0).any(axis=0))
-        if nz_cols.size < 2:
-            return None
-        Xw = Xw[:, nz_cols].copy()       # ensure independent buffer!
+    # 2. drop all-zero columns
+    Xw, nz_cols = _remove_null_rows(Xw)
+    if Xw is None:
+        return None
 
     # 3. trim metadata with the same mask
     chrom = adata.var["chromosome"].values[window_idx][nz_cols]
@@ -647,6 +639,22 @@ def _build_payload(adata, window_idx):
     end = adata.var["end"].values[window_idx][nz_cols]
 
     return Xw, chrom, start, end
+
+
+def _remove_null_rows(X):
+    """"""
+    if sp.sparse.issparse(X):
+        nz_cols = np.flatnonzero(X.getnnz(axis=0))
+        if nz_cols.size < 2:
+            return (None, nz_cols)
+        # sparse slice already copies the relevant data/indices/indptr
+        X = X[:, nz_cols]
+    else:                                # dense ndarray
+        nz_cols = np.flatnonzero((X != 0).any(axis=0))
+        if nz_cols.size < 2:
+            return (None, nz_cols)
+        X = X[:, nz_cols].copy()       # ensure independent buffer!
+    return (X, nz_cols)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -869,10 +877,12 @@ def average_alpha(
                 print("Calculating alpha over {} windows.".format(len(alpha_list)))
 
     finally:
-        try:
-            client.close(timeout="120s")          # wait long, but finite
-        except asyncio.TimeoutError:
-            pass                                  # ignore late worker
+        if created_client:  # only shutdown if we created it
+            try:
+                client.close(timeout="120s")          # wait long, but finite
+            except asyncio.TimeoutError:
+                pass                                  # ignore late worker
+        pass
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
@@ -1150,34 +1160,19 @@ def sliding_graphical_lasso(
     logger.addHandler(handler)
 
     try:
-        # TODO chr_progresses = Progress()
-        with LocalCluster(
-            n_workers=njobs,  # Number of workers (matches njobs from Joblib)
-            processes=False,   # Use processes for isolation
-            threads_per_worker=threads_per_worker,  # Single-threaded
-        ) as cluster, Client(cluster) as client:   # (best for CPU-bound tasks)
-
-            if verbose:
-                # Optional: Monitor your computation with the Dask dashboard
-                print(client.dashboard_link)
-
-            # Configure joblib to use the default joblib parameters
-            with parallel_config():
-                chr_results = Parallel(n_jobs=1)(delayed(
-                    chr_batch_graphical_lasso)(
-                    adata.X[:, (adata.var["chromosome"] == chromosome).values],
-                    adata.var.loc[adata.var["chromosome"] == chromosome, :],
-                    chromosome,
-                    alpha,
-                    unit_distance,
-                    window_size,
-                    init_method,
-                    max_elements,
-                    n=n,
-                    njobs=njobs,
-                    disable_tqdm=(verbose < 1),
-                ) for n, chromosome in enumerate(
-                    adata.var["chromosome"].unique()))
+        chr_results = [chr_batch_graphical_lasso(
+            adata.X[:, (adata.var["chromosome"] == chromosome).values],
+            adata.var.loc[adata.var["chromosome"] == chromosome, :],
+            chromosome,
+            alpha,
+            unit_distance,
+            window_size,
+            init_method,
+            max_elements,
+            n=n,
+            njobs=njobs,
+            disable_tqdm=(verbose < 1),
+        ) for n, chromosome in enumerate(adata.var["chromosome"].unique())]
 
     except Exception as e:
         logger.warning("Exception occurred: %s", e)
@@ -1267,9 +1262,11 @@ def chr_batch_graphical_lasso(
             continue
         # Use joblib.Parallel to run the function in parallel
         # on the different chromosomes
-        parallel_lasso_results = Parallel(n_jobs=njobs, backend="threading")(
+        parallel_lasso_results = Parallel(n_jobs=njobs)(
             delayed(single_graphical_lasso)(
-                idx, chr_X, chr_var.iloc[idx, :],
+                idx,
+                _remove_null_rows(chr_X[:, idx])[0],
+                chr_var.iloc[idx, :],
                 alpha,
                 unit_distance,
                 init_method,
@@ -1300,27 +1297,25 @@ def chr_batch_graphical_lasso(
 
 def single_graphical_lasso(
     idx,
-    memmap_data,
+    X,
     anndata_var,
     alpha,
     unit_distance,
     init_method, map_indices
 ):
 
-    if idx is None or len(idx) <= 1:
+    if idx is None or len(idx) <= 1 or X is None:
         return np.array([], dtype=int), \
             np.array([], dtype=int), \
             np.array([], dtype=int)
 
-    memmap_subset = memmap_data[:, idx]
     # Get submatrix
-    if sp.sparse.issparse(memmap_subset):
-        window_scores = np.cov(memmap_subset.toarray(), rowvar=False) + \
-            1e-4 * np.eye(memmap_subset.shape[1])
-
+    if sp.sparse.issparse(X):
+        window_scores = np.cov(X.toarray(), rowvar=False) + \
+            1e-4 * np.eye(X.shape[1])
     else:
-        window_scores = np.cov(memmap_subset, rowvar=False) + \
-            1e-4 * np.eye(memmap_subset.shape[1])
+        window_scores = np.cov(X, rowvar=False) + \
+            1e-4 * np.eye(X.shape[1])
 
     distance = get_distances_regions_from_dataframe(anndata_var)
 
