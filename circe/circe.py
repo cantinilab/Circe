@@ -12,6 +12,7 @@ from dask.distributed import LocalCluster, Client
 from joblib import Parallel, delayed, parallel_config
 import tqdm
 import random
+import asyncio
 # ──────────────────────────────────────────────────────────────────────────────
 import numpy as np
 import warnings, time, itertools
