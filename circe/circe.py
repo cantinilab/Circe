@@ -803,8 +803,7 @@ def average_alpha(
 
     # ``nullcontext`` does nothing, so the same ``with`` line works
     # for both cases
-    with (nullcontext(client) if created_client is False else client) as cl:
-
+    try:
         # ────────────────────────────────────────────────────────────────
         # 2. Submit ALL windows immediately
         # ────────────────────────────────────────────────────────────────
@@ -868,6 +867,11 @@ def average_alpha(
             if verbose:
                 print("Calculating alpha over {} windows.".format(len(alpha_list)))
 
+    finally:
+        try:
+            client.close(timeout="120s")          # wait long, but finite
+        except asyncio.TimeoutError:
+            pass                                  # ignore late worker
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
