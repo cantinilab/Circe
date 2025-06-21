@@ -5,6 +5,7 @@ from rich.progress import Progress
 import time
 import scipy as sp
 from circe import quic_graph_lasso
+from circe.metrics import cov_with_appended_zeros
 from functools import reduce
 import warnings
 from typing import Union
@@ -427,6 +428,7 @@ def get_distances_regions(adata):
 
 def local_alpha(
     X,
+    zrow,  # number of rows removed (0 if no rows filled with zeros)
     distances,
     maxit=100,
     s=0.75,
@@ -445,6 +447,10 @@ def local_alpha(
     ----------
     X : np.array
         Matrix of regions in a window.
+    zrow : int
+        Number of rows removed from X (0 if no rows filled with zeros).
+        It will be used to correct covariance matrix once calculated from 
+        only non-zero rows.
     distances : np.array
         Distance between regions in the window.
     maxit : int, optional
@@ -496,7 +502,7 @@ def local_alpha(
 
     for i in range(maxit):
         # Get covariance matrix
-        cov = np.cov(X, rowvar=False)
+        cov = cov_with_appended_zeros(X, zrow, rowvar=False)
         # Add small value to diagonal to enforce convergence is lasso ?
         cov = cov - (- 1e-4) * np.eye(len(cov))
         # Get penalties
@@ -567,6 +573,7 @@ def local_alpha(
 #  (defined outside to make it picklable; receives **only scalars + adata**)
 # ──────────────────────────────────────────────────────────────────────────────
 def _alpha_task(X_window,
+                zrow, # number of rows removed (0 if no rows filled with zeros)
                 chromosomes,          # 1-D array[str]  (len = n_peaks)
                 starts,               # 1-D array[int]
                 ends,                 # 1-D array[int]
@@ -599,6 +606,7 @@ def _alpha_task(X_window,
     # ------------------------------------------------------------------
     alpha = local_alpha(
         X=X_window,
+        zrow=zrow,
         distances=distances,
         maxit=max_alpha_iteration,
         unit_distance=unit_distance,
@@ -629,32 +637,35 @@ def _build_payload(adata, window_idx):
     Xw = adata[:, window_idx].X
 
     # 2. drop all-zero columns
-    Xw, nz_cols = _remove_null_rows(Xw)
+    Xw, zrows = _remove_null_rows(Xw)
     if Xw is None:
         return None
 
     # 3. trim metadata with the same mask
-    chrom = adata.var["chromosome"].values[window_idx][nz_cols]
-    start = adata.var["start"].values[window_idx][nz_cols]
-    end = adata.var["end"].values[window_idx][nz_cols]
+    chrom = adata.var["chromosome"].values[window_idx]
+    start = adata.var["start"].values[window_idx]
+    end = adata.var["end"].values[window_idx]
 
-    return Xw, chrom, start, end
+    return Xw, zrows, chrom, start, end
 
 
 def _remove_null_rows(X):
     """"""
     if sp.sparse.issparse(X):
-        nz_cols = np.flatnonzero(X.getnnz(axis=0))
-        if nz_cols.size < 2:
-            return (None, nz_cols)
+        nz_rows = np.flatnonzero(X.getnnz(axis=1))
+        zrows = X.shape[0] - nz_rows.shape[0]
+        if nz_rows.size < 2:
+            return None, 0
         # sparse slice already copies the relevant data/indices/indptr
-        X = X[:, nz_cols]
+        X = X[nz_rows, :]
     else:                                # dense ndarray
-        nz_cols = np.flatnonzero((X != 0).any(axis=0))
-        if nz_cols.size < 2:
-            return (None, nz_cols)
-        X = X[:, nz_cols].copy()       # ensure independent buffer!
-    return (X, nz_cols)
+        nz_rows = np.flatnonzero((X != 0).any(axis=1))
+        if nz_rows.size < 2:
+            return None, 0
+        zrows = X.shape[0] - nz_rows.shape[0]
+        X = X[nz_rows, :].copy()       # ensure independent buffer!
+    print(zrows, "rows removed from the window")
+    return X, zrows
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -833,7 +844,7 @@ def average_alpha(
             raise RuntimeError("No informative windows found")
 
         # unzip the list of tuples into four parallel lists
-        X_list, chrom_list, start_list, end_list = map(list, zip(*payloads))
+        X_list, zrows, chrom_list, start_list, end_list = map(list, zip(*payloads))
 
         # 1. scatter only the big sparse matrices
         X_futures = client.scatter(X_list, broadcast=False)
@@ -842,7 +853,7 @@ def average_alpha(
         futures = [
             client.submit(
                 _alpha_task,
-                Xf, chrom, start, end,
+                Xf, zrow, chrom, start, end,
                 max_alpha_iteration=max_alpha_iteration,
                 unit_distance=unit_distance,
                 s=s,
@@ -851,8 +862,9 @@ def average_alpha(
                 max_elements=max_elements,
                 init_method=init_method,
             )
-            for Xf, chrom, start, end in zip(
+            for Xf, zrow, chrom, start, end in zip(
                 X_futures,
+                zrows, # this is the number of rows removed
                 chrom_list,
                 start_list,
                 end_list)
@@ -1271,7 +1283,7 @@ def chr_batch_graphical_lasso(
         parallel_lasso_results = Parallel(n_jobs=njobs)(
             delayed(single_graphical_lasso)(
                 idx,
-                _remove_null_rows(chr_X[:, idx])[0],
+                *_remove_null_rows(chr_X[:, idx]),
                 chr_var.iloc[idx, :],
                 alpha,
                 unit_distance,
@@ -1304,6 +1316,7 @@ def chr_batch_graphical_lasso(
 def single_graphical_lasso(
     idx,
     X,
+    zrow,
     anndata_var,
     alpha,
     unit_distance,
@@ -1317,10 +1330,10 @@ def single_graphical_lasso(
 
     # Get submatrix
     if sp.sparse.issparse(X):
-        window_scores = np.cov(X.toarray(), rowvar=False) + \
+        window_scores = cov_with_appended_zeros(X.toarray(), zrow, rowvar=False) + \
             1e-4 * np.eye(X.shape[1])
     else:
-        window_scores = np.cov(X, rowvar=False) + \
+        window_scores = cov_with_appended_zeros(X, zrow, rowvar=False) + \
             1e-4 * np.eye(X.shape[1])
 
     distance = get_distances_regions_from_dataframe(anndata_var)
