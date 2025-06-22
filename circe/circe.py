@@ -837,9 +837,14 @@ def average_alpha(
         if verbose:
             print("Building payloads for {} windows...".format(
                 len(random_windows)))
-        payloads = [p                           # keep tuple or skip
-                    for w in random_windows
-                    if (p := _build_payload(adata, w)) is not None]
+        payloads = Parallel(n_jobs=n_workers, verbose=verbose)(
+            delayed(_build_payload)(
+                adata, w
+                )
+            for w in tqdm.tqdm(
+                random_windows))
+        payloads = [p for p in payloads if p is not None]
+
         if not payloads:                        # no informative windows
             raise RuntimeError("No informative windows found")
 
