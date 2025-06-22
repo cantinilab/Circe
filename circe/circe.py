@@ -279,7 +279,7 @@ def compute_atac_network(
     None.
     """
 
-    adata.varp[key] = sliding_graphical_lasso(
+    adata.varp[key], random_windows = sliding_graphical_lasso(
         adata=adata,
         window_size=window_size,
         unit_distance=unit_distance,
@@ -295,6 +295,7 @@ def compute_atac_network(
         njobs=njobs,
         verbose=verbose
     )
+    return random_windows
 
 
 def extract_atac_links(
@@ -573,7 +574,7 @@ def local_alpha(
 #  (defined outside to make it picklable; receives **only scalars + adata**)
 # ──────────────────────────────────────────────────────────────────────────────
 def _alpha_task(X_window,
-                zrow, # number of rows removed (0 if no rows filled with zeros)
+                zrow,  # number of rows removed (0 if no rows filled with zeros)
                 chromosomes,          # 1-D array[str]  (len = n_peaks)
                 starts,               # 1-D array[int]
                 ends,                 # 1-D array[int]
@@ -664,7 +665,6 @@ def _remove_null_rows(X):
             return None, 0
         zrows = X.shape[0] - nz_rows.shape[0]
         X = X[nz_rows, :].copy()       # ensure independent buffer!
-    print(zrows, "rows removed from the window")
     return X, zrows
 
 
@@ -835,16 +835,17 @@ def average_alpha(
         # 0.  Build payloads on the client  (list-comprehension version)
         # ------------------------------------------------------------------
         if verbose:
-            print("Building payloads for {} windows...".format(len(random_windows)))
+            print("Building payloads for {} windows...".format(
+                len(random_windows)))
         payloads = [p                           # keep tuple or skip
                     for w in random_windows
                     if (p := _build_payload(adata, w)) is not None]
-
         if not payloads:                        # no informative windows
             raise RuntimeError("No informative windows found")
 
         # unzip the list of tuples into four parallel lists
-        X_list, zrows, chrom_list, start_list, end_list = map(list, zip(*payloads))
+        X_list, zrows, chrom_list, start_list, end_list = map(
+            list, zip(*payloads))
 
         # 1. scatter only the big sparse matrices
         X_futures = client.scatter(X_list, broadcast=False)
@@ -864,7 +865,7 @@ def average_alpha(
             )
             for Xf, zrow, chrom, start, end in zip(
                 X_futures,
-                zrows, # this is the number of rows removed
+                zrows,  # this is the number of rows removed
                 chrom_list,
                 start_list,
                 end_list)
@@ -875,7 +876,9 @@ def average_alpha(
         # ────────────────────────────────────────────────────────────────
         alpha_list: list[float] = []
         with Progress() as prog:
-            bar = prog.add_task("Calculating alpha", total=n_samples, auto_refresh=False)
+            bar = prog.add_task(
+                "Calculating alpha",
+                total=n_samples, auto_refresh=False)
 
             for fut in as_completed(futures):
                 alpha = fut.result()
@@ -891,7 +894,8 @@ def average_alpha(
                             f.cancel()
                     break
             if verbose:
-                print("Calculating alpha over {} windows.".format(len(alpha_list)))
+                print("Calculating alpha over {} windows.".format(
+                    len(alpha_list)))
 
     finally:
         if created_client:  # only shutdown if we created it
@@ -909,7 +913,8 @@ def average_alpha(
             UserWarning,
         )
 
-    return float(np.mean(alpha_list)) if alpha_list else np.nan
+    print(window_starts[:10])  # print first 10 windows for debugging
+    return float(np.mean(alpha_list)) if alpha_list else np.nan, random_windows
 
 
 def get_distances_regions_from_dataframe(df):
@@ -1141,7 +1146,7 @@ def sliding_graphical_lasso(
             """
         )
 
-    alpha = average_alpha(
+    alpha, random_windows = average_alpha(
         adata,
         window_size=window_size,
         unit_distance=unit_distance,
@@ -1178,19 +1183,22 @@ def sliding_graphical_lasso(
     logger.addHandler(handler)
 
     try:
-        chr_results = [chr_batch_graphical_lasso(
-            adata.X[:, (adata.var["chromosome"] == chromosome).values],
-            adata.var.loc[adata.var["chromosome"] == chromosome, :],
-            chromosome,
-            alpha,
-            unit_distance,
-            window_size,
-            init_method,
-            max_elements,
-            n=n,
-            njobs=njobs,
-            disable_tqdm=(verbose < 1),
-        ) for n, chromosome in enumerate(adata.var["chromosome"].unique())]
+        # Configure joblib to use the default joblib parameters
+        with parallel_config(n_jobs=njobs):
+            chr_results = Parallel(n_jobs=njobs, verbose=10)(delayed(
+                chr_batch_graphical_lasso)(
+                adata.X[:, (adata.var["chromosome"] == chromosome).values],
+                adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                chromosome,
+                alpha,
+                unit_distance,
+                window_size,
+                init_method,
+                max_elements,
+                n=n,
+                disable_tqdm=(verbose < 1),
+            ) for n, chromosome in enumerate(
+                adata.var["chromosome"].unique()))
 
     except Exception as e:
         logger.warning("Exception occurred: %s", e)
@@ -1210,7 +1218,7 @@ def sliding_graphical_lasso(
                 """.format(len(log_messages)))
 
     full_results = sp.sparse.block_diag(chr_results, format="csr")
-    return full_results
+    return full_results, random_windows
 
 
 def chr_batch_graphical_lasso(
@@ -1225,13 +1233,26 @@ def chr_batch_graphical_lasso(
     n=0,
     njobs=1,
     disable_tqdm=False,
+    
 ):
 
     results = {}
     idx_ = {}
     idy_ = {}
-    map_indices = {region: i for i, region in enumerate(chr_var.index)}
     start_slidings = [0, int(window_size / 2)]
+
+    map_indices = "global_idx"
+    if map_indices in chr_var:
+        # if it already exists, check that it contains the same numbering
+        old = chr_var[map_indices].to_numpy()
+        new = np.arange(len(chr_var), dtype=np.int64)
+        if not np.array_equal(old, new):
+            raise ValueError(f"{map_indices} already exists and differs. "
+                            "Choose another name or delete the column first.")
+        # identical → nothing to do
+    else:
+        chr_var[map_indices] = np.arange(len(chr_var), dtype=np.int64)
+
 
     for k in start_slidings:
         slide_results = {}
@@ -1278,17 +1299,18 @@ def chr_batch_graphical_lasso(
                 shape=(chr_X.shape[1], chr_X.shape[1]),
             )
             continue
+
         # Use joblib.Parallel to run the function in parallel
-        # on the different chromosomes
-        parallel_lasso_results = Parallel(n_jobs=njobs)(
+        # inside one chromosome
+        parallel_lasso_results = Parallel(n_jobs=5, backend="threading")(
             delayed(single_graphical_lasso)(
-                idx,
-                *_remove_null_rows(chr_X[:, idx]),
-                chr_var.iloc[idx, :],
-                alpha,
-                unit_distance,
-                init_method,
-                map_indices)
+                idx, chr_X[:, idx],
+                zrow=0,  # No rows filled with zeros
+                anndata_var=chr_var.iloc[idx, :],
+                alpha=alpha,
+                unit_distance=unit_distance,
+                init_method=init_method,
+                map_indices=map_indices)
             for idx in tqdm.tqdm(
                 idxs,
                 position=n, leave=False,
@@ -1320,7 +1342,8 @@ def single_graphical_lasso(
     anndata_var,
     alpha,
     unit_distance,
-    init_method, map_indices
+    init_method,
+    map_indices
 ):
 
     if idx is None or len(idx) <= 1 or X is None:
@@ -1372,11 +1395,11 @@ def single_graphical_lasso(
     # Convert corrected_scores column
     # and row indices to global indices
     idx = [
-        map_indices[name]
+        anndata_var.loc[name, map_indices]
         for name in anndata_var.index.values[scores.row]
     ]
     idy = [
-        map_indices[name]
+        anndata_var.loc[name, map_indices]
         for name in anndata_var.index.values[scores.col]
     ]
     return scores.data, idx, idy
