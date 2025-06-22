@@ -295,7 +295,6 @@ def compute_atac_network(
         njobs=njobs,
         verbose=verbose
     )
-    return random_windows
 
 
 def extract_atac_links(
@@ -918,8 +917,7 @@ def average_alpha(
             UserWarning,
         )
 
-    print(window_starts[:10])  # print first 10 windows for debugging
-    return float(np.mean(alpha_list)) if alpha_list else np.nan, random_windows
+    return float(np.mean(alpha_list)) if alpha_list else np.nan
 
 
 def get_distances_regions_from_dataframe(df):
@@ -1151,7 +1149,7 @@ def sliding_graphical_lasso(
             """
         )
 
-    alpha, random_windows = average_alpha(
+    alpha = average_alpha(
         adata,
         window_size=window_size,
         unit_distance=unit_distance,
@@ -1192,7 +1190,7 @@ def sliding_graphical_lasso(
         with parallel_config(n_jobs=njobs):
             chr_results = Parallel(n_jobs=njobs, verbose=10)(delayed(
                 chr_batch_graphical_lasso)(
-                adata.X[:, (adata.var["chromosome"] == chromosome).values],
+                adata[:, (adata.var["chromosome"] == chromosome).values].X,
                 adata.var.loc[adata.var["chromosome"] == chromosome, :],
                 chromosome,
                 alpha,
@@ -1223,7 +1221,7 @@ def sliding_graphical_lasso(
                 """.format(len(log_messages)))
 
     full_results = sp.sparse.block_diag(chr_results, format="csr")
-    return full_results, random_windows
+    return full_results
 
 
 def chr_batch_graphical_lasso(
