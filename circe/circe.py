@@ -279,7 +279,7 @@ def compute_atac_network(
     None.
     """
 
-    adata.varp[key], random_windows = sliding_graphical_lasso(
+    adata.varp[key] = sliding_graphical_lasso(
         adata=adata,
         window_size=window_size,
         unit_distance=unit_distance,
@@ -1188,7 +1188,7 @@ def sliding_graphical_lasso(
     try:
         # Configure joblib to use the default joblib parameters
         with parallel_config(n_jobs=njobs):
-            chr_results = Parallel(n_jobs=njobs, verbose=10)(delayed(
+            chr_results = Parallel(n_jobs=njobs, verbose=verbose)(delayed(
                 chr_batch_graphical_lasso)(
                 adata[:, (adata.var["chromosome"] == chromosome).values].X,
                 adata.var.loc[adata.var["chromosome"] == chromosome, :],
@@ -1305,8 +1305,8 @@ def chr_batch_graphical_lasso(
 
         # Use joblib.Parallel to run the function in parallel
         # inside one chromosome
-        parallel_lasso_results = Parallel(n_jobs=5, backend="threading")(
-            delayed(single_graphical_lasso)(
+        parallel_lasso_results = [
+            single_graphical_lasso(
                 idx, chr_X[:, idx],
                 zrow=0,  # No rows filled with zeros
                 anndata_var=chr_var.iloc[idx, :],
@@ -1318,7 +1318,7 @@ def chr_batch_graphical_lasso(
                 idxs,
                 position=n, leave=False,
                 disable=disable_tqdm,
-                desc=f"Processing chromosome: '{chromosome}'"))
+                desc=f"Processing chromosome: '{chromosome}'")]
 
         # Unpack the results and concatenate the arrays
         scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
