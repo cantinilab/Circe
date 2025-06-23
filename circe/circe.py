@@ -659,8 +659,6 @@ def _build_payload(adata, window_idx):
 
 def _remove_null_rows(X):
     """"""
-
-    return X, 0
     if sp.sparse.issparse(X):
         nz_rows = np.flatnonzero(X.getnnz(axis=1))
         zrows = X.shape[0] - nz_rows.shape[0]
@@ -1297,7 +1295,7 @@ def chr_batch_graphical_lasso(
             idx = np.where(
                     ((chr_var["start"] > start)
                      & (chr_var["start"] < end-1))
-                    &
+                    |
                     ((chr_var["end"] > start)
                      & (chr_var["end"] < end-1))
                     )[0]
