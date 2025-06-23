@@ -200,7 +200,8 @@ def compute_atac_network(
     seed=42,
     njobs=1,
     threads_per_worker=1,
-    verbose=0
+    verbose=0,
+    chromosomes_sizes=None
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -274,6 +275,12 @@ def compute_atac_network(
             0: no output at all
             1: tqdm progress bar
             2:detailed output
+        The default is 0.
+    chromosomes_sizes : dict, optional
+        Dictionary with chromosome sizes. If None, will use the maximum
+        end position of each chromosome in adata.var.
+        The default is None.
+
     Returns
     -------
     None.
@@ -293,7 +300,8 @@ def compute_atac_network(
         n_samples_maxtry=n_samples_maxtry,
         seed=seed,
         njobs=njobs,
-        verbose=verbose
+        verbose=verbose,
+        chromosomes_sizes=chromosomes_sizes,
     )
 
 
@@ -841,7 +849,7 @@ def average_alpha(
                 adata, w
                 )
             for w in tqdm.tqdm(
-                random_windows))
+                random_windows[:n_samples]))
         payloads = [p for p in payloads if p is not None]
 
         if not payloads:                        # no informative windows
@@ -900,7 +908,6 @@ def average_alpha(
             if verbose:
                 print("Calculating alpha over {} windows.".format(
                     len(alpha_list)))
-
     finally:
         if created_client:  # only shutdown if we created it
             try:
@@ -916,7 +923,6 @@ def average_alpha(
             f"only {len(alpha_list)} windows were usable (requested {n_samples}).",
             UserWarning,
         )
-
     return float(np.mean(alpha_list)) if alpha_list else np.nan
 
 
@@ -963,7 +969,8 @@ def sliding_graphical_lasso(
     verbose=0,
     seed=42,
     njobs=1,
-    threads_per_worker=1
+    threads_per_worker=1,
+    chromosomes_sizes: Union[dict, None] = None
 ):
     """
     Estimate co-accessibility scores between regions penalized on distance.
@@ -1032,6 +1039,10 @@ def sliding_graphical_lasso(
         Number of jobs to run in parallel. The default is 1.
     threads_per_worker : int, optional
         Number of threads per worker. The default is 1.
+    chromosomes_sizes : dict, optional
+        Dictionary with chromosome sizes. If None, will use the maximum
+        end position of each chromosome in adata.var.
+        The default is None.
 
     Returns
     -------
@@ -1164,7 +1175,8 @@ def sliding_graphical_lasso(
         seed=seed,
         n_workers=njobs,
         threads_per_worker=1,
-        verbose=verbose
+        verbose=verbose,
+        chromosomes_sizes=chromosomes_sizes,
     )
     if verbose >= 2:
         print("Alpha coefficient calculated : {}".format(alpha))
@@ -1254,7 +1266,7 @@ def chr_batch_graphical_lasso(
                             "Choose another name or delete the column first.")
         # identical → nothing to do
     else:
-        chr_var[map_indices] = np.arange(len(chr_var), dtype=np.int64)
+        chr_var.loc[:, map_indices] = np.arange(len(chr_var), dtype=np.int64)
 
 
     for k in start_slidings:
