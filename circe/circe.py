@@ -1297,7 +1297,7 @@ def chr_batch_graphical_lasso(
             idx = np.where(
                     ((chr_var["start"] > start)
                      & (chr_var["start"] < end-1))
-                    |
+                    &
                     ((chr_var["end"] > start)
                      & (chr_var["end"] < end-1))
                     )[0]
