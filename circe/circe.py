@@ -791,7 +791,7 @@ def average_alpha(
         for chrom in adata.var["chromosome"].unique():
             chr_size = (
                 chromosomes_sizes.get(chrom)
-                if chromosomes_sizes is not None
+                if chromosomes_sizes is not None and chrom in chromosomes_sizes
                 else adata.var["end"][adata.var["chromosome"] == chrom].max()
             )
             window_starts.extend((chrom, p)
