@@ -671,7 +671,7 @@ def _remove_null_rows(X):
         if nz_rows.size < 2:
             return None, 0
         zrows = X.shape[0] - nz_rows.shape[0]
-        X = X[nz_rows, :].copy()       # ensure independent buffer!
+        X = X[nz_rows, :]       # ensure independent buffer!
     return X, zrows
 
 
