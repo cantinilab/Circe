@@ -578,7 +578,7 @@ def local_alpha(
 #  (defined outside to make it picklable; receives **only scalars + adata**)
 # ──────────────────────────────────────────────────────────────────────────────
 def _alpha_task(X_window,
-                zrow,  # number of rows removed (0 if no rows filled with zeros)
+                zrow,  # number of rows removed (0 if no rows filled with 0s)
                 chromosomes,          # 1-D array[str]  (len = n_peaks)
                 starts,               # 1-D array[int]
                 ends,                 # 1-D array[int]
@@ -826,8 +826,10 @@ def average_alpha(
             idx = np.where(
                 (adata.var["chromosome"] == chrom)
                 & (
-                    ((adata.var["start"] > start) & (adata.var["start"] < end - 1))
-                    | ((adata.var["end"] > start) & (adata.var["end"] < end - 1))
+                    ((adata.var["start"] > start) &
+                     (adata.var["start"] < end - 1))
+                    | ((adata.var["end"] > start) &
+                       (adata.var["end"] < end - 1))
                 )
             )[0]
             if 0 < len(idx) < max_elements:
@@ -880,7 +882,7 @@ def average_alpha(
             print("Building payloads for {} windows...".format(
                 len(random_windows[:n_samples])))
 
-        # --- build one Progress instance with the columns you want -------------
+        # rich progress bar options
         progress_columns = (
             "[progress.description]{task.description}",
             BarColumn(),
@@ -888,6 +890,7 @@ def average_alpha(
             TimeRemainingColumn(),
         )
 
+        # Use rich progress bar to show the progress of the payloads
         with Progress(
             *progress_columns,
             transient=False,
@@ -953,7 +956,8 @@ def average_alpha(
                     prog.update(bar, advance=1)
                     prog.refresh()
                 else:
-                    print("Window skipped (no long edges or too many elements).")
+                    print("Window skipped (no long edges" +
+                          " or too many elements).")
 
                 if len(alpha_list) >= n_samples:
                     # cancel leftovers and break
@@ -976,7 +980,8 @@ def average_alpha(
     # ────────────────────────────────────────────────────────────────
     if len(alpha_list) < n_samples and verbose:
         warnings.warn(
-            f"only {len(alpha_list)} windows were usable (requested {n_samples}).",
+            f"only {len(alpha_list)} windows" +
+            f" were usable (requested {n_samples}).",
             UserWarning,
         )
     return float(np.mean(alpha_list)) if alpha_list else np.nan
@@ -1326,7 +1331,7 @@ def chr_batch_graphical_lasso(
         new = np.arange(len(chr_var), dtype=np.int64)
         if not np.array_equal(old, new):
             raise ValueError(f"{map_indices} already exists and differs. "
-                            "Choose another name or delete the column first.")
+                             "Choose another name or delete the column first.")
         # identical → nothing to do
     else:
         chr_var.loc[:, map_indices] = np.arange(len(chr_var), dtype=np.int64)
@@ -1432,7 +1437,8 @@ def single_graphical_lasso(
 
     # Get submatrix
     if sp.sparse.issparse(X):
-        window_scores = cov_with_appended_zeros(X.toarray(), zrow, rowvar=False) + \
+        window_scores = cov_with_appended_zeros(
+            X.toarray(), zrow, rowvar=False) + \
             1e-4 * np.eye(X.shape[1])
     else:
         window_scores = cov_with_appended_zeros(X, zrow, rowvar=False) + \
