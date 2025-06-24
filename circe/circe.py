@@ -1,22 +1,21 @@
 import logging
 import numpy as np
 import pandas as pd
-from rich.progress import Progress, track,  BarColumn, TimeElapsedColumn, TimeRemainingColumn
-import time
+from rich.progress import Progress,  BarColumn, TimeElapsedColumn, TimeRemainingColumn
 import scipy as sp
 from circe import quic_graph_lasso
 from circe.metrics import cov_with_appended_zeros
 from functools import reduce
 import warnings
 from typing import Union
-from dask.distributed import LocalCluster, Client
+from dask.distributed import Client
 from joblib import Parallel, delayed, parallel_config
 import tqdm
 import random
 import asyncio
 # ──────────────────────────────────────────────────────────────────────────────
 import numpy as np
-import warnings, time, itertools
+import warnings
 from rich.progress import Progress
 
 from dask.distributed import Client, as_completed                # NEW
@@ -899,7 +898,10 @@ def average_alpha(
 
             payloads = Parallel(n_jobs=n_workers, verbose=0)(
                 delayed(_build_payload)(adata, w) for w in
-                random_windows[:n_samples]
+                prog.track(
+                    random_windows[:n_samples],
+                    description="Preparing {}".format(len(random_windows)) +
+                    " random windows across the genome")
             )
 
         payloads = [p for p in payloads if p is not None]
