@@ -862,7 +862,6 @@ def average_alpha(
             threads_per_worker=threads_per_worker,
             memory_limit="0",
             timeout="60s",  # allow time for shutdown
-            worker_kwargs={"heartbeat_interval": "30s"},
         )
         if verbose:
             print("Created new Dask client with {} workers.".format(
