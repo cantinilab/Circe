@@ -881,7 +881,7 @@ def average_alpha(
         # ------------------------------------------------------------------
         if verbose:
             print("Building payloads for {} windows...".format(
-                len(random_windows)))
+                len(random_windows[:n_samples])))
 
         # --- build one Progress instance with the columns you want -------------
         progress_columns = (
@@ -898,10 +898,8 @@ def average_alpha(
         ) as prog:
 
             payloads = Parallel(n_jobs=n_workers, verbose=0)(
-                delayed(_build_payload)(adata, w) for w in prog.track(
-                    random_windows[:n_samples],
-                    description="Preparing {}".format(len(random_windows)) +
-                    " random windows across the genome")
+                delayed(_build_payload)(adata, w) for w in
+                random_windows[:n_samples]
             )
 
         payloads = [p for p in payloads if p is not None]
