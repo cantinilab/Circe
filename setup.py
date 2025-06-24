@@ -97,6 +97,10 @@ setup(
         'rich>=10.12.0',
         'dask',
         'distributed'
+        # For Python < 3.12, any attrs ≥20.3 works fine
+        'attrs>=20.3; python_version < "3.12"',
+        # For Python ≥ 3.12 we prefer 23.2+ because it ships 3.12 wheels
+        'attrs>=23.2; python_version >= "3.12"',
     ],
     extras_require={
         "downloads": ["pybiomart"],
