@@ -1,25 +1,23 @@
-import logging
-import numpy as np
-import pandas as pd
-from rich.progress import Progress,  BarColumn, TimeElapsedColumn, TimeRemainingColumn
-import scipy as sp
-from circe import quic_graph_lasso
-from circe.metrics import cov_with_appended_zeros
-from functools import reduce
+import logging  # Visual settings
 import warnings
 from typing import Union
-from dask.distributed import Client
-from joblib import Parallel, delayed, parallel_config
 import tqdm
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn
+    )
+import numpy as np  # Mathematical operations
+import pandas as pd
+import scipy as sp
 import random
+from functools import reduce
+from circe import quic_graph_lasso  # Graphical Lasso implementation
+from circe.metrics import cov_with_appended_zeros
+from dask.distributed import Client, as_completed  # Parallel execution
+from joblib import Parallel, delayed, parallel_config
 import asyncio
-# ──────────────────────────────────────────────────────────────────────────────
-import numpy as np
-import warnings
-from rich.progress import Progress
-
-from dask.distributed import Client, as_completed                # NEW
-
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
