@@ -55,7 +55,11 @@ def compute_metacells(
     metacells_AnnData : AnnData
         AnnData object containing metacells.
     """
-
+    # Verify not empty cells
+    if adata.X.sum(axis=0).min() == 0:
+        raise ValueError("adata.X contains empty regions." +
+        "Please filter them before computing metacells." +
+        "You can use sc.pp.filter_genes(adata, min_counts=1) to do so.")
     lsi(adata)
     if dim_reduction == 'lsi':
         key_dim_reduction = f"X_{dim_reduction}"
