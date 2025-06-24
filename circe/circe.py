@@ -671,7 +671,7 @@ def _remove_null_rows(X):
         if nz_rows.size < 2:
             return None, 0
         zrows = X.shape[0] - nz_rows.shape[0]
-        X = X[nz_rows, :]       # ensure independent buffer!
+        X = X[nz_rows, :].copy()       # ensure independent buffer!
     return X, zrows
 
 
@@ -897,20 +897,11 @@ def average_alpha(
             auto_refresh=False
         ) as prog:
 
-            task = prog.add_task(
-                f"Preparing {n_samples} random DNA region windows",
-                total=n_samples
-            )
-
-            # Small wrapper so every *completed* window ticks the bar
-            def _wrapped(w):
-                result = _build_payload(adata, w)
-                prog.update(task, advance=1)
-                prog.refresh()
-                return result
-
             payloads = Parallel(n_jobs=n_workers, verbose=0)(
-                delayed(_wrapped)(w) for w in random_windows[:n_samples]
+                delayed(_build_payload)(adata, w) for w in prog.track(
+                    random_windows[:n_samples],
+                    description="Preparing {}".format(len(random_windows)) +
+                    " random windows across the genome")
             )
 
         payloads = [p for p in payloads if p is not None]
