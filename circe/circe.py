@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import pandas as pd
-from rich.progress import Progress
+from rich.progress import Progress, track,  BarColumn, TimeElapsedColumn, TimeRemainingColumn
 import time
 import scipy as sp
 from circe import quic_graph_lasso
@@ -675,6 +675,25 @@ def _remove_null_rows(X):
     return X, zrows
 
 
+def quiet_dask(verbose: int):
+    """
+    verbose = 0   → completely mute WARNINGS from Dask
+    verbose = 1   → keep WARNINGS (default)
+    verbose ≥ 2   → keep everything (INFO / DEBUG)
+    """
+    if verbose == 0:
+        level = logging.ERROR          # show only errors
+    elif verbose == 1:
+        level = logging.WARNING        # default
+    else:                               # verbose >= 2
+        level = logging.INFO           # or DEBUG
+    for name in (
+        "distributed.worker.state_machine",
+        "distributed.nanny",
+    ):
+        logging.getLogger(name).setLevel(level)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 #  Main function (parallel version)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -817,10 +836,26 @@ def average_alpha(
             if 0 < len(idx) < max_elements:
                 random_windows.append(idx)
 
+    # Keep only windows larger than the distance constraint (i.e. with at least
+    # one long-range edge)
+    random_windows = [
+        window for window in random_windows
+        if (
+            (adata.var.loc[adata.var_names[window[-1]], "end"]
+                + adata.var.loc[adata.var_names[window[-1]], "start"])/2
+            -
+            (adata.var.loc[adata.var_names[window[0]], "end"]
+                + adata.var.loc[adata.var_names[window[0]], "start"])/2
+            > distance_constraint
+            )]
     # ────────────────────────────────────────────────────────────────
     # 1. Dask client (local if none supplied)
     # ────────────────────────────────────────────────────────────────
     created_client = False
+
+    # silence to be created dask instance
+    quiet_dask(verbose)
+
     if client is None:
         client = Client(
             n_workers=n_workers,
@@ -828,7 +863,10 @@ def average_alpha(
             memory_limit="0",
             timeout="60s"  # allow time for shutdown
         )
-        print(client.dashboard_link)
+        if verbose:
+            print("Created new Dask client with {} workers.".format(
+                n_workers))
+            print(client.dashboard_link)
         created_client = True
 
     # ``nullcontext`` does nothing, so the same ``with`` line works
@@ -844,13 +882,40 @@ def average_alpha(
         if verbose:
             print("Building payloads for {} windows...".format(
                 len(random_windows)))
-        payloads = Parallel(n_jobs=n_workers, verbose=verbose)(
-            delayed(_build_payload)(
-                adata, w
-                )
-            for w in tqdm.tqdm(
-                random_windows[:n_samples]))
+
+        # --- build one Progress instance with the columns you want -------------
+        progress_columns = (
+            "[progress.description]{task.description}",
+            BarColumn(),
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+        )
+
+        with Progress(
+            *progress_columns,
+            transient=False,
+            auto_refresh=False
+        ) as prog:
+
+            task = prog.add_task(
+                f"Preparing {n_samples} random DNA region windows",
+                total=n_samples
+            )
+
+            # Small wrapper so every *completed* window ticks the bar
+            def _wrapped(w):
+                result = _build_payload(adata, w)
+                prog.update(task, advance=1)
+                prog.refresh()
+                return result
+
+            payloads = Parallel(n_jobs=n_workers, verbose=0)(
+                delayed(_wrapped)(w) for w in random_windows[:n_samples]
+            )
+
         payloads = [p for p in payloads if p is not None]
+        if verbose:
+            print(len(payloads), "informative windows found.")
 
         if not payloads:                        # no informative windows
             raise RuntimeError("No informative windows found")
@@ -887,7 +952,7 @@ def average_alpha(
         # 3. Collect results until n_samples reached
         # ────────────────────────────────────────────────────────────────
         alpha_list: list[float] = []
-        with Progress() as prog:
+        with Progress(*progress_columns, transient=False) as prog:
             bar = prog.add_task(
                 "Calculating alpha",
                 total=n_samples, auto_refresh=False)
@@ -898,6 +963,8 @@ def average_alpha(
                     alpha_list.append(alpha)
                     prog.update(bar, advance=1)
                     prog.refresh()
+                else:
+                    print("Window skipped (no long edges or too many elements).")
 
                 if len(alpha_list) >= n_samples:
                     # cancel leftovers and break
@@ -1198,6 +1265,7 @@ def sliding_graphical_lasso(
     logger.addHandler(handler)
 
     try:
+        print("Calculating co-accessibility scores...")
         # Configure joblib to use the default joblib parameters
         with parallel_config(n_jobs=njobs):
             chr_results = Parallel(n_jobs=njobs, verbose=verbose)(delayed(
@@ -1231,6 +1299,12 @@ def sliding_graphical_lasso(
                 about workers memory.\n
                 It's usually expected, but you can display them with verbose=2
                 """.format(len(log_messages)))
+
+    # Concatenate results from all chromosomes
+    if verbose == 0:
+        print("Concatenating results from all chromosomes...")
+    else:
+        print("Concatenating results from all chromosomes as a csr_matrix...")
 
     full_results = sp.sparse.block_diag(chr_results, format="csr")
     return full_results
@@ -1267,7 +1341,6 @@ def chr_batch_graphical_lasso(
         # identical → nothing to do
     else:
         chr_var.loc[:, map_indices] = np.arange(len(chr_var), dtype=np.int64)
-
 
     for k in start_slidings:
         slide_results = {}
@@ -1319,8 +1392,8 @@ def chr_batch_graphical_lasso(
         # inside one chromosome
         parallel_lasso_results = [
             single_graphical_lasso(
-                idx, chr_X[:, idx],
-                zrow=0,  # No rows filled with zeros
+                idx,
+                *_remove_null_rows(chr_X[:, idx]),
                 anndata_var=chr_var.iloc[idx, :],
                 alpha=alpha,
                 unit_distance=unit_distance,
@@ -1347,6 +1420,8 @@ def chr_batch_graphical_lasso(
                 (slide_results["idx"], slide_results["idy"])),
             shape=(chr_X.shape[1], chr_X.shape[1]),
         )
+
+    # Reconcile results from all windows
     return reconcile(results, idx_, idy_)
 
 
