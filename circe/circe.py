@@ -901,7 +901,7 @@ def average_alpha(
                 delayed(_build_payload)(adata, w) for w in
                 prog.track(
                     random_windows[:n_samples],
-                    description="Preparing {}".format(len(random_windows)) +
+                    description="Preparing {}".format(len(random_windows[:n_samples])) +
                     " random windows across the genome")
             )
 
