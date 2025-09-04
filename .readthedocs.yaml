@@ -20,3 +20,10 @@ sphinx:
 # python:
 #    install:
 #    - requirements: docs/requirements.txt
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docsbuild
+        - sphinx
