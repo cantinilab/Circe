@@ -5,7 +5,7 @@ import anndata
 import pandas as pd
 import numpy as np
 import warnings
-from .circe import extract_atac_links, subset_region
+from .utils import subset_region, extract_atac_links
 
 
 def plot_genes(

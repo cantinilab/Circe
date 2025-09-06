@@ -60,8 +60,8 @@ def compute_metacells(
         raise ValueError("adata.X contains empty regions." +
         "Please filter them before computing metacells." +
         "You can use sc.pp.filter_genes(adata, min_counts=1) to do so.")
-    lsi(adata)
     if dim_reduction == 'lsi':
+        lsi(adata)
         key_dim_reduction = f"X_{dim_reduction}"
         sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
     elif dim_reduction in adata.obsm.keys():
@@ -127,7 +127,8 @@ def compute_metacells(
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
     metacells_AnnData.var_names = adata.var_names
-    metacells_AnnData.obs_names = [f"metacell_{i}" for i in range(len(metacells_values))]
+    metacells_AnnData.obs_names = [f"metacell_{i}" for i in range(
+        len(metacells_values))]
     metacells_AnnData.var = adata.var.copy()
     metacells_AnnData.varp = adata.varp.copy()
 

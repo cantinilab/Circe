@@ -1,7 +1,7 @@
 import pandas  # For DataFrame manipulation
 import networkx  # For graph creation and manipulation
 import numpy  # For numerical operations
-from .circe import extract_atac_links
+from .utils import extract_atac_links
 
 
 def find_ccan_cutoff(connection_df, tolerance_digits=2, seed=42):
