@@ -153,72 +153,90 @@ def sort_regions(adata: ad.AnnData):
     return adata[:, ord_index]
 
 
-
 def extract_atac_links(
     adata: ad.AnnData,
     key=None,
-    columns=['Peak1', 'Peak2', 'score']
+    columns=('Peak1', 'Peak2', 'score')
 ):
     """
-    Extract links from adata.varp[key] and return them as a DataFrame.
-    Since atac-networks scores are undirected, only one link is returned for
-    each pair of regions.
+    Extract upper-triangular links (row < col) from adata.varp[key] into a DataFrame.
+    Works natively with CSR/CSC. If another format is found, it is converted to CSR
+    on the fly (without mutating adata).
 
     Parameters
     ----------
-    adata : anndata object
-        anndata object with var_names as variable names.
+    adata : AnnData
+        Object with var_names as variable names.
     key : str, optional
-        key from adata.varp. The default is None.
-        If None, and only one key is found in adata.varp, will use this key.
-        Otherwise if several keys are found in adata.varp, will raise an error.
-    columns : list, optional
-        Columns names of the output DataFrame.
-        The default is ['Peak1', 'Peak2', 'score'].
+        Key from adata.varp. If None and only one key exists, that one is used.
+    columns : tuple[str, str, str]
+        Output column names (Peak1, Peak2, score).
 
     Returns
     -------
-    DataFrame
-        DataFrame with columns names given by 'columns' parameter.
+    pandas.DataFrame
+        DataFrame with columns given by `columns`, sorted by descending score.
     """
-
-    if key is None:  # if only one key (I guess often), no need to precise key
-        # maybe replace by a default one later
-        if len(list(adata.varp)) == 1:
-            key = list(adata.varp)[0]
+    # ----- choose key -----
+    if key is None:
+        keys = list(adata.varp)
+        if len(keys) == 1:
+            key = keys[0]
         else:
             raise KeyError(
-                "Several keys were found in adata.varp: {}, ".format(
-                    list(adata.varp)) +
-                "please precise which keyword use (arg 'key'))"
+                "Several keys were found in adata.varp: {}. "
+                "Please specify which key to use (arg 'key').".format(keys)
             )
+    elif key not in adata.varp:
+        raise KeyError(f"The key you provided ({key}) is not in adata.varp: {list(adata.varp)}")
+
+    mat = adata.varp[key]
+
+    # ----- ensure sparse, prefer CSR/CSC -----
+    if not sp.sparse.issparse(mat):
+        # fall back to CSR if a dense array sneaks in
+        mat = sp.sparse.csr_matrix(mat)
+
+    fmt = mat.getformat()
+    if fmt == "csr":
+        # Filter to strict upper triangle without converting to COO
+        # (row < col) by using triu in CSR, then extract indices fast.
+        u = sp.sparse.triu(mat, k=1, format="csr")
+        indptr, indices, data = u.indptr, u.indices, u.data
+        # build row indices aligned with data in O(nnz)
+        rows = np.repeat(np.arange(u.shape[0], dtype=np.int64), np.diff(indptr))
+        cols = indices
+
+    elif fmt == "csc":
+        # Do the same in CSC
+        u = sp.sparse.triu(mat, k=1, format="csc")
+        indptr, indices, data = u.indptr, u.indices, u.data
+        # in CSC, indices are row indices; build column indices
+        cols = np.repeat(np.arange(u.shape[1], dtype=np.int64), np.diff(indptr))
+        rows = indices
+
     else:
-        if key not in list(adata.varp):
-            raise KeyError("The key you provided ({}) is not in adata.varp: {}"
-                           .format(key, list(adata.varp))
-                           )
+        # Other formats: convert once to CSR (local copy), then proceed
+        u = sp.sparse.triu(mat.tocsr(), k=1, format="csr")
+        indptr, indices, data = u.indptr, u.indices, u.data
+        rows = np.repeat(np.arange(u.shape[0], dtype=np.int64), np.diff(indptr))
+        cols = indices
 
-    # Convert to COO format if needed
-    converted = False
-    if isinstance(adata.varp[key], sp.sparse.csr_matrix):
-        adata.varp[key] = adata.varp[key].tocoo()
-        converted = True
+    # ----- build DataFrame -----
+    df = pd.DataFrame({
+        columns[0]: rows,
+        columns[1]: cols,
+        columns[2]: data
+    })
 
-    links = pd.DataFrame(
-        [(row, col, data) for (row, col, data) in zip(
-            [i for i in adata.varp[key].row],
-            [i for i in adata.varp[key].col],
-            adata.varp[key].data)
-            if row < col],
-        columns=columns
-        ).sort_values(by=columns[2], ascending=False)
+    # map indices -> peak names (vectorized)
+    var_names = np.asarray(adata.var_names)
+    df[columns[0]] = var_names[df[columns[0]].to_numpy()]
+    df[columns[1]] = var_names[df[columns[1]].to_numpy()]
 
-    links[columns[0]] = [adata.var_names[i] for i in links[columns[0]]]
-    links[columns[1]] = [adata.var_names[i] for i in links[columns[1]]]
-    links = links.reset_index(drop=True)
-
-    # Convert back to CSR format if it was converted
-    if converted:
-        adata.varp[key] = adata.varp[key].tocsr()
-
-    return links
+    # sort by score desc and reset index
+    df = df.sort_values(
+        by=columns[2],
+        ascending=False,
+        kind="mergesort").reset_index(drop=True)
+    return df

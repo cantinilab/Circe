@@ -1,9 +1,12 @@
 import pytest
 import circe as ci
+import circe.downloads
 import anndata as ad
 import scipy as sp
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 import matplotlib.pyplot as plt
 
@@ -154,7 +157,11 @@ def test_network_atac():
     with pytest.raises(Exception):
         ci.extract_atac_links(atac)
 
-    # Test if many varp keys are present and good one given
+    # Test if many varp keys are present and good one given, on a dense and csc matrix formats
+    atac.varp["atac_network2"] = sp.sparse.csc_matrix(atac.varp["atac_network2"])
+    atac_df = ci.extract_atac_links(atac, key="atac_network2")
+
+    atac.varp["atac_network2"] = atac.varp["atac_network2"].toarray()
     atac_df = ci.extract_atac_links(atac, key="atac_network2")
 
     # Test if key given is wrong
@@ -185,3 +192,40 @@ def test_network_atac():
     # Test if wrong start or end column name is given
     with pytest.raises(Exception) as ValueError:
         ci.draw.plot_connections(atac_df, "chr1", 0, 0, sep=('_', '_'))
+
+    # Download gene annotations
+    genes_df = ci.downloads.download_genes()
+
+    fig, ax = plt.subplots(1, figsize=(20, 6))
+    ci.draw.plot_connections_genes(
+        connections=atac_df,
+        genes=genes_df,
+        chromosome="chr1",
+        start=50_000,
+        end=350_000,
+        gene_spacing=30_000,
+        y_lim_top=-0.01,
+        abs_threshold=0.0,
+        track_spacing=0.01,
+        track_width=0.01,
+        legend=True,
+        ax=ax
+    )
+
+    with pytest.raises(Exception) as ValueError:
+        ci.draw.plot_connections_genes(
+            connections=atac_df,
+            genes=genes_df,
+            chromosome="chr100",
+            start=50_000,
+            end=350_000,
+        )
+
+    with pytest.raises(Exception) as ValueError:
+        ci.draw.plot_connections_genes(
+            connections=atac,
+            genes=genes_df[-5:],
+            chromosome="chr1",
+            start=350_000,
+            end=50_000,
+        )

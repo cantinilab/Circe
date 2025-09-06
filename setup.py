@@ -68,7 +68,7 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.8',
+    version='0.3.9',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -94,7 +94,7 @@ setup(
         'scikit-learn>=1.6',
         'joblib>=1.1.0',
         'scanpy>=1.8.1',
-        'anndata<0.12',
+        'anndata',
         'rich>=10.12.0',
         'dask',
         'distributed',
