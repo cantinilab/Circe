@@ -94,6 +94,7 @@ setup(
         'scikit-learn>=1.6',
         'joblib>=1.1.0',
         'scanpy>=1.8.1',
+        'anndata<0.12',
         'rich>=10.12.0',
         'dask',
         'distributed',
