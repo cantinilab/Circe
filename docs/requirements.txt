@@ -4,3 +4,4 @@ myst-parser
 sphinx-autodoc-typehints
 sphinx-copybutton
 myst_nb
+furo
