@@ -152,18 +152,15 @@ Performance on real dataset 2:
 Coming
 ------
 
-- ~~**Calculate metacells !**~~
-- ~~Add stats on similarity on large datasets.~~
-- ~~Add stats on runtime, memory usage.~~
-- Implement multithreading use (should speed up even more).
-- ~~Fix seed for reproducibility.~~
+- Gene activity
+- Complete integration in HuMMuS GRN inference pipeline
 
 
 Usage
 -----
 
 It is currently developed to work with AnnData objects.
-Check ``Example1.ipynb`` for a simple usage example.
+Check [CIRCE general example](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.ipynb) for a simple usage demonstration.
 
 
 Citation

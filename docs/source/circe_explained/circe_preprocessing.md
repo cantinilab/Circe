@@ -1,6 +1,8 @@
 Preprocessing choices
 =================================
 
+Here are some tips and observations from our benchmarks on preprocessing choices for CIRCE [Trimbour et al., 2025](paper_link).
+
 Single-cell vs metacells
 ------------------------
 - **Single-cell inputs** typically yield **better validation** versus PC-HiC interactions.
