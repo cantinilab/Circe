@@ -90,7 +90,7 @@ setup(
     install_requires=[
         'Cython',
         'numpy<2.0.0',
-        'pandas>=2.1.1',
+        'pandas',
         'scikit-learn>=1.6',
         'joblib>=1.1.0',
         'scanpy>=1.8.1',
