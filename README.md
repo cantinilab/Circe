@@ -86,11 +86,7 @@ Performance on real dataset 2:
 
 ### Coming:
 
-- ~~_**Calculate metacells !**_~~
-- ~~_Add stats on similarity on large datasets._~~
-- ~~_Add stats on runtime, memory usage._~~
-- _Implement the multithreading use. Should speed up even more._
-- ~~_Fix seed for reproducibility._~~
+- Gene activity calculation
 
 ## Usage
 It is currently developped to work with AnnData objects. Check [this notebook](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.html) for a simple usage example.
