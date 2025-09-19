@@ -160,7 +160,7 @@ Usage
 -----
 
 It is currently developed to work with AnnData objects.
-Check [CIRCE general example](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.ipynb) for a simple usage demonstration.
+Check [CIRCE general example](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.html) for a simple usage demonstration.
 
 
 Citation
