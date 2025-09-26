@@ -54,14 +54,15 @@ CIRCE is a Python package for inferring **co-accessibility networks from
 single-cell ATAC-seq data**, using `skggm <https://www.github.com/skggm/skggm>`_
 for the graphical lasso and `scanpy <https://www.github.com/theislab/scanpy>`_ for data processing.
 
-It is based on the pipeline and hypotheses presented in the manuscript
+You can check our preprint here for more details! 😊 :raw-html:`<br />`
+https://doi.org/10.1101/2025.09.23.678054
+
+While updating the preprocessing, the algorithm is based on the pipeline and hypotheses presented in the manuscript
 *Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data*
 by Pliner et al. (2018).
 The original R package Cicero is available
 `here <https://www.github.com/cole-trapnell-lab/cicero-release>`_.
 
-You can check our preprint here for more details! 😊 :raw-html:`<br />`
-https://doi.org/10.1101/2025.09.23.678054
 
 .. note::
    In case you encounter any trouble, check out the `CIRCE GitHub repo <https://github.com/cantinilab/Circe>`_.
