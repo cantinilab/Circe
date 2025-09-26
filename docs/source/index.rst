@@ -57,6 +57,11 @@ by Pliner et al. (2018).
 The original R package Cicero is available
 `here <https://www.github.com/cole-trapnell-lab/cicero-release>`_.
 
+You can check our preprint here for more details! 😊<br>
+https://doi.org/10.1101/2025.09.23.678054
+
+.. note::
+   In case you encounter any trouble, check out the `CIRCE GitHub repo <https://github.com/cantinilab/Circe>`_.
 
 Installation
 ------------
@@ -116,17 +121,13 @@ Visualisation
    :align: center
 
 
-Comparison to Cicero R package
+Bencmark & comparison to the Cicero R package
 ------------------------------
+All tests run in the preprint can be found in the  `CIRCE benchmark repo <https://github.com/cantinilab/Circe_reproducibility>`_..
 
-Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below).
-It should run significantly faster than Cicero (e.g.: running time of 5 sec instead of 17 min for dataset 2).
-
-If you have any suggestion, don't hesitate! This package is still a work in progress :)
-
-On the same metacells obtained from Cicero code.
-
-All tests can be found in the `circe benchmark repo <https://github.com/cantinilab/Circe_reproducibility>`_.
+Metacells computation might create differences, but scores will be identical when applied to the same metacalls (cf comparison plots below).
+It should run significantly faster than Cicero (e.g., running time of 5 sec instead of 17 min for dataset 2).
+*On the same metacells obtained from the Cicero code.*
 
 
 Real dataset 2 - subsample of 10x PBMC (2021)
@@ -156,19 +157,11 @@ Coming
 - Complete integration in HuMMuS GRN inference pipeline
 
 
-Usage
------
-
-It is currently developed to work with AnnData objects.
-Check [CIRCE general example](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.html) for a simple usage demonstration.
-
-
 Citation
 --------
 
-Trimbour Rémi (2025).
-*Circe: Co-accessibility network from ATAC-seq data in Python (based on Cicero package).*
-Package version 0.3.6.
+Trimbour R., Saez Rodriguez J., Cantini L. (2025). CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data.
+bioRxiv, 2025.09.23.678054, doi: https://doi.org/10.1101/2025.09.23.678054 
 
 
 .. toctree::
