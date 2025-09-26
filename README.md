@@ -15,15 +15,20 @@
 [![Downloads](https://static.pepy.tech/badge/circe-py/month)](https://pepy.tech/project/circe-py)
 
 ## Description
-This repo contains a python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
+This repo contains a Python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
 
 It is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
+
+You can check our preprint here for more details! 😊<br>
+https://doi.org/10.1101/2025.09.23.678054
+
+
 ## Installation
 The package can be installed using pip:
 ```
 pip install circe-py
 ```
- and from github
+ and from GitHub
 ```
 pip install "git+https://github.com/cantinilab/circe.git"
 ```
@@ -66,13 +71,15 @@ ci.draw.plot_connections_genes(
 ```
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/circe_figure_genes_access.png" align="center"/>
 
-## Comparison to Cicero R package
-<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
+## Usage
+You can go check out our documentation for more examples! <br> https://circe.readthedocs.io/<br>
+The documentation is still in building, so don't hesitate to open any issues or requests you might have in this repo. 😊
 
-_If you have any suggestion, don't hesitate ! This package is still a work in progress :)_
+## Benchmark & Comparison to Cicero R package
+<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
 <br> *On the same metacells obtained from Cicero code.*
 
-All tests can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility)
+All tests run in the preprint can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility).
 
 ### Real dataset 2 - subsample of 10x PBMC (2021)
 - Pearson correlation coefficient: 0.999958
@@ -85,12 +92,10 @@ Performance on real dataset 2:
 <img src="https://github.com/cantinilab/circe/raw/main/Figures/perf_real_dataset2.png" align="center" width="480"/>
 
 ### Coming:
-
 - Gene activity calculation
 
-## Usage
-It is currently developped to work with AnnData objects. Check [this notebook](https://circe.readthedocs.io/en/latest/examples/2_Detailed_example.html) for a simple usage example.
-
 ## Citation
-Trimbour Rémi (2025). Circe: Co-accessibility network from ATAC-seq data in python (based on Cicero package). Package version 0.3.6.
+>  Trimbour R., Saez Rodriguez J., Cantini L. (2025). CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data.
+bioRxiv, 2025.09.23.678054, doi: https://doi.org/10.1101/2025.09.23.678054 
+
 
