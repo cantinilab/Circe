@@ -15,12 +15,14 @@
 [![Downloads](https://static.pepy.tech/badge/circe-py/month)](https://pepy.tech/project/circe-py)
 
 ## Description
-This repo contains a Python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
-
-It is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
+This repository contains a Python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
 
 You can check our preprint here for more details! 😊<br>
 https://doi.org/10.1101/2025.09.23.678054
+
+While updating the pre-processing, CIRCE's algorithm is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This original R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
+
+
 
 
 ## Installation
@@ -76,8 +78,8 @@ You can go check out our documentation for more examples! <br> https://circe.rea
 The documentation is still in building, so don't hesitate to open any issues or requests you might have in this repo. 😊
 
 ## Benchmark & Comparison to Cicero R package
-<br> Metacalls computation might create differences, but scores will be identical applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g.: running time of 5 sec instead of 17 min for the dataset 2)_.
-<br> *On the same metacells obtained from Cicero code.*
+<br> Metacalls computation might create differences, but scores will be identical when applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g., running time of 5 sec instead of 17 min for the dataset 2)_.
+<br> *On the same metacells obtained from the Cicero code.*
 
 All tests run in the preprint can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility).
 
