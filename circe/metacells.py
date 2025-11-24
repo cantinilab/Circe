@@ -6,6 +6,144 @@ import numpy as np
 import anndata as ad
 import scanpy as sc
 from rich.progress import track
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
+
+def _select_metacells(indices, k, max_overlap_metacells, max_metacells):
+    """
+    Select non-overlapping metacells using numpy arrays.
+    This reduces memory overhead and speeds up overlap computation.
+    
+    Parameters
+    ----------
+    indices : ndarray
+        Array of neighbor indices for each cell (n_cells x k)
+    k : int
+        Number of neighbors
+    max_overlap_metacells : float
+        Maximum overlap threshold
+    max_metacells : int
+        Maximum number of metacells to select
+        
+    Returns
+    -------
+    list
+        List of selected metacell indices (as numpy arrays)
+    """
+    n_cells = len(indices)
+    max_overlap_count = int(max_overlap_metacells * k)
+    
+    # Convert to list of sorted numpy arrays for faster operations
+    indices_arrays = [np.sort(idx) for idx in indices]
+    
+    # Track selected metacells
+    selected_metacells = [indices_arrays[0]]
+    
+    # Use a more efficient overlap check
+    for i in track(range(1, n_cells), description="Computing metacells..."):
+        if len(selected_metacells) >= max_metacells:
+            break
+        
+        current = indices_arrays[i]
+        is_non_overlapping = True
+        
+        # Check overlap with all selected metacells
+        for selected in selected_metacells:
+            # Fast intersection count using sorted arrays
+            overlap = len(np.intersect1d(current, selected, assume_unique=True))
+            if overlap >= max_overlap_count:
+                is_non_overlapping = False
+                break
+        
+        if is_non_overlapping:
+            selected_metacells.append(current)
+    
+    return selected_metacells
+
+
+def _aggregate_single_metacell(X, indices, method, is_sparse):
+    """
+    Aggregate a single metacell from cell expression matrix.
+    
+    Parameters
+    ----------
+    X : sparse or dense matrix
+        Expression matrix
+    indices : array
+        Cell indices for this metacell
+    method : str
+        'mean' or 'sum'
+    is_sparse : bool
+        Whether X is sparse
+        
+    Returns
+    -------
+    ndarray
+        Aggregated expression vector
+    """
+    if is_sparse:
+        # Use sparse matrix slicing - much more memory efficient
+        subset = X[indices, :]
+        if method == 'mean':
+            result = np.array(subset.mean(axis=0)).ravel()
+        else:  # sum
+            result = np.array(subset.sum(axis=0)).ravel()
+    else:
+        # Dense matrix
+        subset = X[indices, :]
+        if method == 'mean':
+            result = np.mean(subset, axis=0)
+        else:  # sum
+            result = np.sum(subset, axis=0)
+    
+    return result
+
+
+def _aggregate_metacells(X, metacell_indices, method, n_jobs=1):
+    """
+    Aggregate metacells with optional parallelization.
+    
+    This function avoids creating intermediate dense arrays and uses
+    sparse matrix operations when possible.
+    
+    Parameters
+    ----------
+    X : sparse or dense matrix
+        Expression matrix (cells x features)
+    metacell_indices : list
+        List of arrays, each containing cell indices for a metacell
+    method : str
+        'mean' or 'sum'
+    n_jobs : int
+        Number of parallel jobs
+        
+    Returns
+    -------
+    list
+        List of aggregated expression vectors
+    """
+    is_sparse = sp.sparse.issparse(X)
+    
+    if n_jobs == 1:
+        # Sequential processing
+        metacells_values = []
+        for indices in track(metacell_indices, description="Aggregating metacells..."):
+            result = _aggregate_single_metacell(X, indices, method, is_sparse)
+            metacells_values.append(result)
+    else:
+        # Parallel processing
+        if n_jobs == -1:
+            n_jobs = None  # Use all available cores
+        
+        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            futures = [
+                executor.submit(_aggregate_single_metacell, X, indices, method, is_sparse)
+                for indices in metacell_indices
+            ]
+            metacells_values = [f.result() for f in track(futures, description="Aggregating metacells...")]
+    
+    return metacells_values
+
 
 def compute_metacells(
         adata,
@@ -15,7 +153,8 @@ def compute_metacells(
         dim_reduction='lsi',
         projection=None,
         method='mean',
-        metric='cosine'
+        metric='cosine',
+        n_jobs=1
 ):
     """
     Compute metacells by suming/averaging expression of neighbouring cells.
@@ -49,6 +188,9 @@ def compute_metacells(
     metric : str, optional
         Distance type used to calculate distance between neighbors.
         The default is 'cosine'.
+    n_jobs : int, optional
+        Number of parallel jobs for aggregation step. Use -1 for all cores.
+        The default is 1 (no parallelization).
 
     Returns
     -------
@@ -82,47 +224,19 @@ def compute_metacells(
     # Identify non-overlapping above a threshold metacells
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm[key_projection])
     distances, indices = nbrs.kneighbors(adata.obsm[key_projection])
-    indices = [set(indice) for indice in indices]
+    
     if max_metacells is None:
         max_metacells = len(indices)
 
-    # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
-    metacells = [indices[0]]
-    iterations = 0
-    for i in track(indices[1:], description="Computing metacells..."):
-        if iterations >= max_metacells-1:
-            break
+    # Select non-overlapping metacells
+    metacell_indices = _select_metacells(
+        indices, k, max_overlap_metacells, max_metacells
+    )
 
-        no_overlap = True
-        for metacell in metacells:
-            if len(metacell.intersection(i)) >= max_overlap_metacells * k:
-                no_overlap = False
-                break
-        if no_overlap:
-            metacells.append(i)
-        iterations += 1
-
-    # Sum expression of neighbors composing the metacell
-    metacells_values = []
-    for metacell in metacells:
-        if method == 'mean':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(np.mean([adata.X[i].toarray() for i in metacell], 0))[0]
-                )
-            else:
-                metacells_values.append(
-                    np.mean([adata.X[i] for i in metacell], 0)
-                )
-        elif method == 'sum':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(sum([adata.X[i].toarray() for i in metacell]))[0]
-                )
-            else:
-                metacells_values.append(
-                    sum([adata.X[i] for i in metacell])
-                )
+    # Aggregate metacells
+    metacells_values = _aggregate_metacells(
+        adata.X, metacell_indices, method, n_jobs
+    )
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))

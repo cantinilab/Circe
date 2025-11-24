@@ -68,7 +68,7 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.9',
+    version='0.3.10',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
     long_description=long_description,
     long_description_content_type='text/markdown',
