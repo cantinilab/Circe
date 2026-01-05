@@ -30,6 +30,7 @@ warnings.filterwarnings(
 
 def compute_atac_network(
     adata,
+    method='graphical_lasso',
     window_size=None,
     unit_distance=1000,
     distance_constraint=None,
@@ -45,48 +46,43 @@ def compute_atac_network(
     njobs=1,
     threads_per_worker=1,
     verbose=0,
-    chromosomes_sizes=None
+    chromosomes_sizes=None,
+    # VAE-specific parameters (ignored when method='graphical_lasso')
+    epochs=50,
+    batch_size=32,
+    hidden_layer=None,
+    latent_dim=None,
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
     in the varp slot of the passed anndata object.
-    Scores are computed using 'sliding_graphical_lasso'.
 
-    1. First, the function calculates the optimal penalty coefficient alpha.
-        Alpha is calculated by averaging alpha values from 'n_samples' windows,
-        such as there's less than 5% of possible long-range edges
-        (> distance_constraint) and less than 20% co-accessible regions
-        (regardless of distance constraint) in each window.
-
-    2. Then, it will calculate co-accessibility scores between regions in a
-    sliding window of size 'window_size' and step 'window_size/2'.
-        Results should be very similar to Cicero's results. There is a strong
-        correlation between Cicero's co-accessibility scores and the ones
-        calculated by this function. However, absolute values are not the same,
-        because Cicero uses a different method to apply Graphical Lasso.
-
-    3. Finally, it will average co-accessibility scores across windows.
+    Two methods are available:
+    - 'graphical_lasso': Uses graphical lasso with distance penalties (default)
+    - 'vae': Uses VAE latent embeddings with Pearson correlation
 
     Parameters
     ----------
     adata : anndata object
         anndata object with var_names as region names.
+    method : str, optional
+        Method to use: 'graphical_lasso' or 'vae'. Default is 'graphical_lasso'.
     window_size : int, optional
         Size of sliding window, in which co-accessible regions can be found.
         The default is None and will be set to 500000 if organism is None.
         This parameter is organism specific.
     unit_distance : int, optional
         Distance between two regions in the matrix, in base pairs.
-        The default is 1000.
+        The default is 1000. Only used with 'graphical_lasso' method.
     distance_constraint : int, optional
         Distance threshold for defining long-range edges.
         It is used to fit the penalty coefficient alpha.
         The default is None and will be set to 250000 if organism is None.
-        This parameter is organism specific.
+        This parameter is organism specific. Only used with 'graphical_lasso' method.
     s : float, optional
         Parameter for penalizing long-range edges. The default is None and
         will be set to 0.75 if organism is None. This parameter is organism
-        specific.
+        specific. Only used with 'graphical_lasso' method.
     organism : str, optional
         Organism name. The default is None.
         If s, window_size and distance_constraint are None, will use
@@ -94,26 +90,29 @@ def compute_atac_network(
         Otherwise, will use the values passed as arguments.
     max_alpha_iteration : int, optional
         Maximum number of iterations to calculate optimal penalty coefficient.
-        The default is 100.
+        The default is 100. Only used with 'graphical_lasso' method.
     distance_parameter_convergence : float, optional
         Convergence parameter for alpha (penalty) coefficiant calculation.
-        The default is 1e-22.
+        The default is 1e-22. Only used with 'graphical_lasso' method.
     max_elements : int, optional
         Maximum number of regions in a window. The default is 200.
     n_samples : int, optional
         Number of windows used to calculate optimal penalty coefficient alpha.
-        The default is 100.
+        The default is 100. Only used with 'graphical_lasso' method.
     n_samples_maxtry : int, optional
         Maximum number of windows to try to calculate optimal penalty
         coefficient alpha. Should be higher than n_samples. The default is 500.
+        Only used with 'graphical_lasso' method.
     key : str, optional
         Key to store the results in adata.varp. The default is "atac_network".
     seed : int, optional
         Seed for random number generator. The default is 42.
+        Only used with 'graphical_lasso' method.
     njobs : int, optional
         Number of jobs to run in parallel. The default is 1.
     threads_per_worker : int, optional
         Number of threads per worker. The default is 1.
+        Only used with 'graphical_lasso' method.
     verbose : int, optional
         Verbose level.
             0: no output at all
@@ -124,29 +123,72 @@ def compute_atac_network(
         Dictionary with chromosome sizes. If None, will use the maximum
         end position of each chromosome in adata.var.
         The default is None.
+    epochs : int, optional
+        Number of VAE training epochs. Default is 50.
+        Only used with 'vae' method.
+    batch_size : int, optional
+        Batch size for VAE training. Default is 32.
+        Only used with 'vae' method.
+    hidden_layer : int, optional
+        Hidden layer dimension for VAE. Auto-determined if None.
+        Only used with 'vae' method.
+    latent_dim : int, optional
+        Latent dimension for VAE. Auto-determined if None.
+        Only used with 'vae' method.
 
     Returns
     -------
     None.
     """
 
-    adata.varp[key] = sliding_graphical_lasso(
-        adata=adata,
-        window_size=window_size,
-        unit_distance=unit_distance,
-        distance_constraint=distance_constraint,
-        s=s,
-        organism=organism,
-        max_alpha_iteration=max_alpha_iteration,
-        distance_parameter_convergence=distance_parameter_convergence,
-        max_elements=max_elements,
-        n_samples=n_samples,
-        n_samples_maxtry=n_samples_maxtry,
-        seed=seed,
-        njobs=njobs,
-        verbose=verbose,
-        chromosomes_sizes=chromosomes_sizes,
-    )
+    if method == 'vae':
+        from circe.latent_network import compute_latent_network
+        
+        # Set default window_size if needed
+        if window_size is None:
+            if organism is not None:
+                organism_values = {
+                    "human": {"window_size": 500_000},
+                    "mouse": {"window_size": 500_000},
+                    "drosophila": {"window_size": 100_000},
+                }
+                if organism in organism_values:
+                    window_size = organism_values[organism]["window_size"]
+                else:
+                    window_size = 500_000
+            else:
+                window_size = 500_000
+        
+        adata.varp[key] = compute_latent_network(
+            adata=adata,
+            window_size=window_size,
+            max_elements=max_elements,
+            epochs=epochs,
+            batch_size=batch_size,
+            hidden_layer=hidden_layer,
+            latent_dim=latent_dim,
+            verbose=verbose,
+            njobs=njobs,
+            chromosomes_sizes=chromosomes_sizes,
+        )
+    else:
+        adata.varp[key] = sliding_graphical_lasso(
+            adata=adata,
+            window_size=window_size,
+            unit_distance=unit_distance,
+            distance_constraint=distance_constraint,
+            s=s,
+            organism=organism,
+            max_alpha_iteration=max_alpha_iteration,
+            distance_parameter_convergence=distance_parameter_convergence,
+            max_elements=max_elements,
+            n_samples=n_samples,
+            n_samples_maxtry=n_samples_maxtry,
+            seed=seed,
+            njobs=njobs,
+            verbose=verbose,
+            chromosomes_sizes=chromosomes_sizes,
+        )
 
 
 def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
