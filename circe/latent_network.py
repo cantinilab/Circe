@@ -134,7 +134,7 @@ def compute_latent_network(
         chr_results = Parallel(n_jobs=njobs, verbose=verbose)(
             delayed(chr_latent_correlation)(
                 adata[:, (adata.var["chromosome"] == chromosome).values].X,
-                adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                adata.var.loc[adata.var["chromosome"] == chromosome, :].copy(),
                 chromosome,
                 latent_embeddings[adata.var["chromosome"] == chromosome],
                 window_size,
