@@ -58,8 +58,7 @@ def quic(
 
     Sn, Sm = S.shape
     if Sn != Sm:
-        raise ValueError("Input data must be square. S shape = {}".format(S.shape))
-        return
+        raise ValueError(f"Input data must be square. S shape = {S.shape}")
 
     # Regularization parameter matrix L.
     if isinstance(lam, float):
@@ -302,7 +301,6 @@ class QuicGraphicalLasso(InverseCovarianceEstimator):
 
         if self.mode == "path" and path is None:
             raise ValueError("path required in path mode.")
-            return
 
         super(QuicGraphicalLasso, self).__init__(
             score_metric=score_metric, init_method=init_method, auto_scale=auto_scale

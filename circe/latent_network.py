@@ -276,8 +276,9 @@ def chr_latent_correlation(
             scores = corr_matrix[upper_idx]
             
             # Map back to global indices
-            global_i = [chr_var.iloc[idx[i]][map_indices] for i in upper_idx[0]]
-            global_j = [chr_var.iloc[idx[j]][map_indices] for j in upper_idx[1]]
+            global_idx = chr_var[map_indices].values
+            global_i = global_idx[idx[upper_idx[0]]]
+            global_j = global_idx[idx[upper_idx[1]]]
             
             scores_list.append(scores)
             idx_list.append(global_i)

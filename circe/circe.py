@@ -27,6 +27,13 @@ warnings.filterwarnings(
     "ignore", category=FutureWarning,
     message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
 
+# Organism-specific default parameters
+ORGANISM_DEFAULTS = {
+    'human': {'window_size': 500_000, 'distance_constraint': 250_000, 's': 0.75},
+    'mouse': {'window_size': 500_000, 'distance_constraint': 250_000, 's': 0.75},
+    'drosophila': {'window_size': 100_000, 'distance_constraint': 50_000, 's': 0.85},
+}
+
 
 def compute_atac_network(
     adata,
@@ -146,18 +153,10 @@ def compute_atac_network(
         
         # Set default window_size if needed
         if window_size is None:
-            if organism is not None:
-                organism_values = {
-                    "human": {"window_size": 500_000},
-                    "mouse": {"window_size": 500_000},
-                    "drosophila": {"window_size": 100_000},
-                }
-                if organism in organism_values:
-                    window_size = organism_values[organism]["window_size"]
-                else:
-                    window_size = 500_000
+            if organism is not None and organism in ORGANISM_DEFAULTS:
+                window_size = ORGANISM_DEFAULTS[organism]["window_size"]
             else:
-                window_size = 500_000
+                window_size = ORGANISM_DEFAULTS["human"]["window_size"]
         
         adata.varp[key] = compute_latent_network(
             adata=adata,
@@ -223,30 +222,26 @@ def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
     return penalties
 
 
-def get_distances_regions(adata):
+def get_distances_regions(data):
     """
-    Get distances between regions, var_names from an anndata object.
+    Get distances between regions.
     'add_region_infos' should be run before this function.
 
     Parameters
     ----------
-    adata : anndata object
-        anndata object with var_names as region names.
+    data : anndata.AnnData or pd.DataFrame
+        AnnData object or DataFrame with 'start' and 'end' columns.
 
     Returns
     -------
     distance : np.array
         Distance between regions.
     """
-
-    # Store start and end positions in two arrays
-    m, n = np.meshgrid(
-        (adata.var["end"].values + adata.var["start"].values)/2,
-        (adata.var["end"].values + adata.var["start"].values)/2)
-    # Get distance between start of region m and end of region n
+    df = data.var if hasattr(data, 'var') else data
+    centers = (df['end'].values + df['start'].values) / 2
+    m, n = np.meshgrid(centers, centers)
     distance = np.abs(m - n)
-    # Replace diagonal by 1
-    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
+    np.fill_diagonal(distance, 0)
     return distance
 
 
@@ -328,7 +323,7 @@ def local_alpha(
         # Get covariance matrix
         cov = cov_with_appended_zeros(X, zrow, rowvar=False)
         # Add small value to diagonal to enforce convergence is lasso ?
-        cov = cov - (- 1e-4) * np.eye(len(cov))
+        cov = cov + 1e-4 * np.eye(len(cov))
         # Get penalties
         penalties = calc_penalty(
             distance_parameter,
@@ -423,7 +418,7 @@ def _alpha_task(X_window,
         "end":        ends,
     })
 
-    distances = get_distances_regions_from_dataframe(var_df)
+    distances = get_distances_regions(var_df)
 
     # ------------------------------------------------------------------
     # 2. Run local_alpha on the slice
@@ -635,7 +630,7 @@ def average_alpha(
     rng = random.Random(seed)
     rng.shuffle(window_starts)
     if verbose:
-        print("Selecting {} genomic windows...".format(n_samples_maxtry))
+        print(f"Selecting {n_samples_maxtry} genomic windows...")
     random_windows: list[np.ndarray] = []
     while len(random_windows) < n_samples_maxtry and window_starts:
         need = n_samples_maxtry - len(random_windows)
@@ -682,8 +677,7 @@ def average_alpha(
             timeout="60s",  # allow time for shutdown
         )
         if verbose:
-            print("Created new Dask client with {} workers.".format(
-                n_workers))
+            print(f"Created new Dask client with {n_workers} workers.")
             print(client.dashboard_link)
         created_client = True
 
@@ -698,8 +692,7 @@ def average_alpha(
         # 0.  Build payloads on the client  (list-comprehension version)
         # ------------------------------------------------------------------
         if verbose:
-            print("Building payloads for {} windows...".format(
-                len(random_windows[:n_samples])))
+            print(f"Building payloads for {len(random_windows[:n_samples])} windows...")
 
         # rich progress bar options
         progress_columns = (
@@ -720,8 +713,7 @@ def average_alpha(
                 delayed(_build_payload)(adata, w) for w in
                 prog.track(
                     random_windows[:n_samples],
-                    description="Preparing {}".format(len(random_windows[:n_samples])) +
-                    " random windows across the genome")
+                    description=f"Preparing {len(random_windows[:n_samples])} random windows across the genome")
             )
 
         payloads = [p for p in payloads if p is not None]
@@ -785,8 +777,7 @@ def average_alpha(
                             f.cancel()
                     break
             if verbose:
-                print("Calculating alpha over {} windows.".format(
-                    len(alpha_list)))
+                print(f"Calculating alpha over {len(alpha_list)} windows.")
     finally:
         if created_client:  # only shutdown if we created it
             try:
@@ -804,33 +795,6 @@ def average_alpha(
             UserWarning,
         )
     return float(np.mean(alpha_list)) if alpha_list else np.nan
-
-
-def get_distances_regions_from_dataframe(df):
-    """
-    Get distances between regions, var_names from a dataframe object.
-    'add_region_infos' should be run before this function.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Dataframe with var_names as region names.
-
-    Returns
-    -------
-    distance : np.array
-        Distance between regions.
-    """
-
-    # Store start and end positions in two arrays
-    m, n = np.meshgrid(
-        (df["end"].values + df["start"].values)/2,
-        (df["end"].values + df["start"].values)/2)
-    # Get distance between start of region m and end of region n
-    distance = np.abs(m - n)
-    # Replace diagonal by 1
-    distance = distance - (np.diag(distance)) * np.eye(distance.shape[0])
-    return distance
 
 
 def sliding_graphical_lasso(
@@ -930,36 +894,17 @@ def sliding_graphical_lasso(
         Dictionary with keys as window names and values as sparse matrices
         (csr) of co-accessibility scores.
     """
-    default_organism = "human"
-    organism_values = {
-        "human": {
-            "window_size": 500_000,
-            "distance_constraint": 250_000,
-            "s": 0.75,
-        },
-        "mouse": {
-            "window_size": 500_000,
-            "distance_constraint": 250_000,
-            "s": 0.75,
-        },
-        "drosophila": {
-            "window_size": 100_000,
-            "distance_constraint": 50_000,
-            "s": 0.85,
-        },
-    }
-
     if organism is not None:
-        if organism in organism_values.keys():
+        if organism in ORGANISM_DEFAULTS:
             if window_size is None:
-                window_size = organism_values[organism]["window_size"]
+                window_size = ORGANISM_DEFAULTS[organism]["window_size"]
             else:
                 warnings.warn(
                     """
                     window_size is not None, using the value passed as param.
                     """, UserWarning)
             if distance_constraint is None:
-                distance_constraint = organism_values[organism][
+                distance_constraint = ORGANISM_DEFAULTS[organism][
                     "distance_constraint"]
             else:
                 warnings.warn(
@@ -968,7 +913,7 @@ def sliding_graphical_lasso(
                     using the value passed as argument.
                     """, UserWarning)
             if s is None:
-                s = organism_values[organism]["s"]
+                s = ORGANISM_DEFAULTS[organism]["s"]
             else:
                 warnings.warn(
                     """
@@ -976,46 +921,41 @@ def sliding_graphical_lasso(
                     """, UserWarning)
         else:
             raise ValueError(
-                """
-                Organism not found in organism_values.
+                f"""
+                Organism not found in ORGANISM_DEFAULTS.
                 Please keep organism=None or use one of the organisms:
-                {}.
-                """.format(
-                    list(organism_values.keys())
-                )
+                {list(ORGANISM_DEFAULTS.keys())}.
+                """
             )
     else:
         none_values = []
         if window_size is None:
             none_values.append("window_size")
-            window_size = organism_values[default_organism]["window_size"]
+            window_size = ORGANISM_DEFAULTS["human"]["window_size"]
         if distance_constraint is None:
             none_values.append("distance_constraint")
             distance_constraint = window_size / 2
         if s is None:
             none_values.append("s")
-            s = organism_values[default_organism]["s"]
+            s = ORGANISM_DEFAULTS["human"]["s"]
         if none_values:
             citation = "https://cole-trapnell-lab.github.io/cicero-release/docs_m3/#important-considerations-for-non-human-data"
+            default_values = {key: value for key, value in ORGANISM_DEFAULTS[
+                        "human"].items()
+                        if key in none_values}
             warnings.warn(
-                """
-                No organism, nor value passed for the parameters: {0},
+                f"""
+                No organism, nor value passed for the parameters: {none_values},
                 using default values.
                 The default values are defined from human and mouse data,
                 you might want to change them if you are working with
                 another organisms.
 
                 Default values used:
-                {1}
+                {default_values}
 
-                You can check how to define them in {2}.
-                """.format(
-                    none_values,
-                    {key: value for key, value in organism_values[
-                        "human"].items()
-                        if key in none_values},
-                    citation
-                    )
+                You can check how to define them in {citation}.
+                """
             )
 
     # Check if distance_constraint is not too high
@@ -1059,7 +999,7 @@ def sliding_graphical_lasso(
         chromosomes_sizes=chromosomes_sizes,
     )
     if verbose >= 2:
-        print("Alpha coefficient calculated : {}".format(alpha))
+        print(f"Alpha coefficient calculated : {alpha}")
 
     # Custom log handler to capture log messages of distributed on memory
     class ListLogHandler(logging.Handler):
@@ -1108,10 +1048,10 @@ def sliding_graphical_lasso(
         if len(log_messages) > 0:
             print(
                 """
-                Logger: {} warnings message have been returned by distributed
+                Logger: {len(log_messages)} warnings message have been returned by distributed
                 about workers memory.\n
                 It's usually expected, but you can display them with verbose=2
-                """.format(len(log_messages)))
+                """)
 
     # Concatenate results from all chromosomes
     if verbose == 0:
@@ -1263,7 +1203,7 @@ def single_graphical_lasso(
         window_scores = cov_with_appended_zeros(X, zrow, rowvar=False) + \
             1e-4 * np.eye(X.shape[1])
 
-    distance = get_distances_regions_from_dataframe(anndata_var)
+    distance = get_distances_regions(anndata_var)
 
     # Test if distance is negative
     if np.any(distance < 0):
@@ -1298,14 +1238,8 @@ def single_graphical_lasso(
 
     # Convert corrected_scores column
     # and row indices to global indices
-    idx = [
-        anndata_var.loc[name, map_indices]
-        for name in anndata_var.index.values[scores.row]
-    ]
-    idy = [
-        anndata_var.loc[name, map_indices]
-        for name in anndata_var.index.values[scores.col]
-    ]
+    idx = anndata_var[map_indices].values[scores.row]
+    idy = anndata_var[map_indices].values[scores.col]
     return scores.data, idx, idy
 
 

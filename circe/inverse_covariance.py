@@ -30,13 +30,11 @@ def _init_coefs(X, method="corrcoef"):
         return X, np.max(np.abs(np.triu(X)))
     else:
         raise ValueError(
-            (
-                """
+            f"""
                 Initialize_method must be 'corrcoef' or 'cov', 'spearman',
                 'kendalltau', 'precomputed', or a custom function."
-                "passed '{}' .".format(method)
+                "passed '{method}' ."
                 """
-            )
         )
 
 

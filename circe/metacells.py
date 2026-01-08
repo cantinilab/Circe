@@ -66,10 +66,10 @@ def compute_metacells(
         sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
     elif dim_reduction in adata.obsm.keys():
         key_dim_reduction = dim_reduction
-        print("Using adata.obsm['{}'] to identify neighboring cells".format(dim_reduction))
+        print(f"Using adata.obsm['{dim_reduction}'] to identify neighboring cells")
         sc.pp.neighbors(adata, use_rep=dim_reduction, metric=metric)
     else:
-        raise "Only 'lsi' is implemented for now, and no adata.obsm['{}'] coordinates found.".format(dim_reduction)
+        raise ValueError(f"Only 'lsi' is implemented for now, and no adata.obsm['{dim_reduction}'] coordinates found.")
 
     if projection == 'umap':
         sc.tl.umap(adata)
@@ -77,7 +77,7 @@ def compute_metacells(
     elif projection is None:
         key_projection = key_dim_reduction
     else:
-        raise "Only 'umap' and None are implemented for now."
+        raise ValueError("Only 'umap' and None are implemented for now.")
 
     # Identify non-overlapping above a threshold metacells
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm[key_projection])
@@ -105,24 +105,17 @@ def compute_metacells(
     # Sum expression of neighbors composing the metacell
     metacells_values = []
     for metacell in metacells:
+        indices = list(metacell)
         if method == 'mean':
             if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(np.mean([adata.X[i].toarray() for i in metacell], 0))[0]
-                )
+                metacells_values.append(adata.X[indices].mean(axis=0).A1)
             else:
-                metacells_values.append(
-                    np.mean([adata.X[i] for i in metacell], 0)
-                )
+                metacells_values.append(adata.X[indices].mean(axis=0))
         elif method == 'sum':
             if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(sum([adata.X[i].toarray() for i in metacell]))[0]
-                )
+                metacells_values.append(adata.X[indices].sum(axis=0).A1)
             else:
-                metacells_values.append(
-                    sum([adata.X[i] for i in metacell])
-                )
+                metacells_values.append(adata.X[indices].sum(axis=0))
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))

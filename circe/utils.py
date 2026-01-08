@@ -78,7 +78,7 @@ def subset_region(adata: ad.AnnData, chromosome, start, end):
     return adata
 
 
-def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
+def add_region_infos(adata: ad.AnnData, sep=("_", "_")):
     """
     Get region informations from the var_names of adata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
@@ -101,7 +101,6 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
     adata : anndata object
         anndata object with region informations in var.
     """
-    # Check if user wants to modify anndata inplace or return a copy
     regions_list = adata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
@@ -113,13 +112,11 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
     # Check if all regions have the same number of elements
     if set([len(i) for i in regions_list]) != set([3]):
         raise ValueError(
-            """
+            f"""
             Not all regions have the same number of elements.
-            Check if sep is correct, it should be ({}, {}),
+            Check if sep is correct, it should be ({sep[0]}, {sep[1]}),
             with only one occurence each in region names.
-            """.format(
-                sep[0], sep[1]
-            )
+            """
         )
 
     # Extract region informations from var_names
@@ -138,11 +135,7 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
     adata.var["end"] = region_infos["end"]
 
     adata = sort_regions(adata)
-    # Return anndata if inplace is False
-    if inplace:
-        pass
-    else:
-        return adata
+    return adata
 
 
 def sort_regions(adata: ad.AnnData):
@@ -184,8 +177,8 @@ def extract_atac_links(
             key = keys[0]
         else:
             raise KeyError(
-                "Several keys were found in adata.varp: {}. "
-                "Please specify which key to use (arg 'key').".format(keys)
+                f"Several keys were found in adata.varp: {keys}. "
+                "Please specify which key to use (arg 'key')."
             )
     elif key not in adata.varp:
         raise KeyError(f"The key you provided ({key}) is not in adata.varp: {list(adata.varp)}")
