@@ -105,7 +105,6 @@ def compute_latent_network(
     latent_dim: Optional[int] = None,
     verbose: int = 0,
     njobs: int = 1,
-    chromosomes_sizes: Optional[dict] = None,
 ) -> scipy.sparse.csr_matrix:
     """
     Compute co-accessibility scores using VAE latent embeddings.
@@ -130,8 +129,6 @@ def compute_latent_network(
         Verbosity level (0, 1, or 2).
     njobs : int
         Number of parallel jobs for chromosome processing.
-    chromosomes_sizes : dict, optional
-        Dictionary mapping chromosome names to sizes.
 
     Returns
     -------
@@ -174,17 +171,22 @@ def compute_latent_network(
     if verbose >= 1:
         print('Computing correlations within windows...')
     
+    def _make_chr_args(n, chromosome):
+        chr_mask = (adata.var['chromosome'] == chromosome).values
+        return (
+            adata.var.loc[chr_mask, :].copy(),
+            chromosome,
+            latent_embeddings[chr_mask],
+            window_size,
+            max_elements,
+            n,
+            verbose < 1,
+        )
+    
     with parallel_config(n_jobs=njobs):
         chr_results = Parallel(n_jobs=njobs, verbose=verbose)(
-            delayed(chr_latent_correlation)(
-                adata.var.loc[adata.var['chromosome'] == chromosome, :].copy(),
-                chromosome,
-                latent_embeddings[adata.var['chromosome'] == chromosome],
-                window_size,
-                max_elements,
-                n=n,
-                disable_tqdm=(verbose < 1),
-            ) for n, chromosome in enumerate(adata.var['chromosome'].unique())
+            delayed(chr_latent_correlation)(*_make_chr_args(n, chromosome))
+            for n, chromosome in enumerate(adata.var['chromosome'].unique())
         )
     
     if verbose >= 1:
@@ -232,21 +234,8 @@ def chr_latent_correlation(
     idy_ = {}
     start_slidings = [0, window_size // 2]
     
-    # Create mapping indices
-    map_indices = 'global_idx'
-    if map_indices in chr_var.columns:
-        old = chr_var[map_indices].to_numpy()
-        new = np.arange(len(chr_var), dtype=np.int64)
-        if not np.array_equal(old, new):
-            raise ValueError(
-                f'{map_indices} already exists and differs. '
-                'Choose another name or delete the column first.'
-            )
-    else:
-        chr_var.loc[:, map_indices] = np.arange(len(chr_var), dtype=np.int64)
-    
-    # Pre-compute global indices (used in correlation computation)
-    global_idx = chr_var[map_indices].values
+    # Create mapping indices (chr_var is already a copy, safe to assign directly)
+    global_idx = np.arange(len(chr_var), dtype=np.int64)
     
     for k in start_slidings:
         window_key = f'window_{k}'
