@@ -8,7 +8,6 @@ import tqdm
 from typing import Union, Optional
 from joblib import Parallel, delayed, parallel_config
 
-from circe.metacells import tfidf
 from circe.circe import reconcile
 
 
@@ -70,19 +69,25 @@ def compute_latent_network(
     tf.config.threading.set_inter_op_parallelism_threads(1)
 
     if verbose >= 1:
-        print("Applying TF-IDF normalization...")
+        print("Preprocessing data...")
     
-    # Apply TF-IDF normalization
-    X_tfidf = tfidf(adata.X)
-    if sp.sparse.issparse(X_tfidf):
-        X_tfidf = X_tfidf.toarray()
+    # Convert to dense array if sparse
+    if sp.sparse.issparse(adata.X):
+        X = adata.X.toarray()
+    else:
+        X = np.asarray(adata.X)
     
-    # Log transform and min-max normalize to [0, 1] for sigmoid decoder
-    X_log = np.log1p(X_tfidf)
-    X_norm = (X_log - X_log.min()) / (X_log.max() - X_log.min() + 1e-8)
+    # Log2 transform (FAVA-style)
+    X = np.log2(1 + X)
     
     # Transpose to (n_peaks, n_cells) for VAE
-    X_norm = X_norm.T
+    X = X.T
+    
+    # Per-row (per-peak) min-max normalization to [0, 1] for sigmoid decoder
+    row_min = X.min(axis=1, keepdims=True)
+    row_max = X.max(axis=1, keepdims=True)
+    X_norm = (X - row_min) / (row_max - row_min + 1e-8)
+    X_norm = np.nan_to_num(X_norm)
     
     # Determine architecture dimensions
     original_dim = X_norm.shape[1]  # n_cells
