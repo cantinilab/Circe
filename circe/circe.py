@@ -1025,7 +1025,7 @@ def sliding_graphical_lasso(
             chr_results = Parallel(n_jobs=njobs, verbose=verbose)(delayed(
                 chr_batch_graphical_lasso)(
                 adata[:, (adata.var["chromosome"] == chromosome).values].X,
-                adata.var.loc[adata.var["chromosome"] == chromosome, :],
+                adata.var.loc[adata.var["chromosome"] == chromosome, :].copy(),
                 chromosome,
                 alpha,
                 unit_distance,
