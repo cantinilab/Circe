@@ -1023,7 +1023,7 @@ def sliding_graphical_lasso(
         print("Calculating co-accessibility scores...")
         # Configure joblib to use the default joblib parameters
         with parallel_config(n_jobs=njobs):
-            chr_results = Parallel(n_jobs=njobs, verbose=verbose)(delayed(
+            chr_results = Parallel(n_jobs=njobs, verbose=0)(delayed(
                 chr_batch_graphical_lasso)(
                 adata[:, (adata.var["chromosome"] == chromosome).values].X,
                 adata.var.loc[adata.var["chromosome"] == chromosome, :].copy(),
@@ -1034,7 +1034,7 @@ def sliding_graphical_lasso(
                 init_method,
                 max_elements,
                 n=n,
-                disable_tqdm=(verbose < 1),
+                disable_tqdm=True,
             ) for n, chromosome in enumerate(
                 adata.var["chromosome"].unique()))
 
