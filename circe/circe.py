@@ -714,6 +714,7 @@ def average_alpha(
                     random_windows[:n_samples],
                     description=f"Preparing {len(random_windows[:n_samples])} random windows across the genome")
             )
+            prog.refresh()
 
         payloads = [p for p in payloads if p is not None]
         if verbose:
@@ -774,7 +775,9 @@ def average_alpha(
                     for f in futures:
                         if not f.done():
                             f.cancel()
+                    prog.refresh()
                     break
+            prog.refresh()
             if verbose:
                 print(f"Calculating alpha over {len(alpha_list)} windows.")
     finally:

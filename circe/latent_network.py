@@ -187,6 +187,7 @@ def compute_latent_network(
             )
             chr_results.append(result)
             prog.update(task, advance=1)
+        prog.refresh()
     
     if verbose >= 1:
         print('Concatenating results...')
