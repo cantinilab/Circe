@@ -30,6 +30,8 @@ class VAE(tf.keras.Model):
         Dimension of the latent space.
     epochs : int
         Number of training epochs.
+    verbose : int
+        Verbosity level for training (0=silent, 1=progress bar, 2=one line per epoch).
     """
 
     def __init__(
@@ -42,6 +44,7 @@ class VAE(tf.keras.Model):
         hidden_layer: int,
         latent_dim: int,
         epochs: int,
+        verbose: int = 0,
     ) -> None:
         super(VAE, self).__init__()
         
@@ -84,7 +87,7 @@ class VAE(tf.keras.Model):
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(x_test, x_test),
-            verbose=0,
+            verbose=verbose,
         )
     
     def call(self, inputs: tf.Tensor) -> tf.Tensor:

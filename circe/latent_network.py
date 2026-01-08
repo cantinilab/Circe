@@ -158,7 +158,8 @@ def compute_latent_network(
     # Train VAE
     opt = tf.keras.optimizers.Adam(learning_rate=0.001, clipnorm=0.001)
     x_train = np.array(X_norm, dtype=np.float32)
-    vae = VAE(opt, x_train, x_train, batch_size, original_dim, hidden_layer, latent_dim, epochs)
+    vae = VAE(opt, x_train, x_train, batch_size, original_dim, hidden_layer, latent_dim, epochs,
+              verbose=1 if verbose >= 1 else 0)
     
     if verbose >= 1:
         print('Extracting latent embeddings...')
