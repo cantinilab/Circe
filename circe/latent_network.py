@@ -6,6 +6,7 @@ import scipy.sparse
 import anndata as ad
 from typing import Optional
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
+from sklearn.metrics.pairwise import cosine_similarity
 
 from circe.circe import reconcile
 
@@ -77,10 +78,13 @@ def _compute_window_indices(chr_var, window_size, max_elements, k):
     return idxs, mesh_idx, mesh_idy
 
 
-def _compute_window_correlation(idx, chr_latent_embeddings, global_idx):
-    """Compute Pearson correlations for peaks in a single window."""
+def _compute_window_correlation(idx, chr_latent_embeddings, global_idx, metric='pearson'):
+    """Compute correlations for peaks in a single window."""
     window_embeddings = chr_latent_embeddings[idx]
-    corr_matrix = np.corrcoef(window_embeddings)
+    if metric == 'cosine':
+        corr_matrix = cosine_similarity(window_embeddings)
+    else:
+        corr_matrix = np.corrcoef(window_embeddings)
     
     upper_idx = np.triu_indices(len(idx), k=1)
     scores = corr_matrix[upper_idx]
@@ -103,6 +107,7 @@ def compute_latent_network(
     hidden_layer: Optional[int] = None,
     latent_dim: Optional[int] = None,
     verbose: int = 0,
+    metric: str = 'pearson',
 ) -> scipy.sparse.csr_matrix:
     """
     Compute co-accessibility scores using VAE latent embeddings.
@@ -125,6 +130,9 @@ def compute_latent_network(
         Latent dimension. Auto-determined if None.
     verbose : int
         Verbosity level (0, 1, or 2).
+    metric : str
+        Metric to use for computing similarity: 'pearson' or 'cosine'.
+        Default is 'pearson'.
 
     Returns
     -------
@@ -185,6 +193,7 @@ def compute_latent_network(
                 chr_latent_embeddings=latent_embeddings[chr_mask],
                 window_size=window_size,
                 max_elements=max_elements,
+                metric=metric,
             )
             chr_results.append(result)
             prog.update(task, advance=1)
@@ -196,7 +205,7 @@ def compute_latent_network(
     return sp.sparse.block_diag(chr_results, format='csr')
 
 
-def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elements):
+def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elements, metric='pearson'):
     """
     Compute correlations within sliding windows for a single chromosome.
 
@@ -210,6 +219,9 @@ def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elem
         Window size in base pairs.
     max_elements : int
         Maximum peaks per window.
+    metric : str
+        Metric to use for computing similarity: 'pearson' or 'cosine'.
+        Default is 'pearson'.
 
     Returns
     -------
@@ -247,7 +259,7 @@ def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elem
         
         for idx in idxs:
             scores, global_i, global_j = _compute_window_correlation(
-                idx, chr_latent_embeddings, global_idx
+                idx, chr_latent_embeddings, global_idx, metric
             )
             scores_list.append(scores)
             idx_list.append(global_i)

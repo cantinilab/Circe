@@ -60,6 +60,7 @@ def compute_atac_network(
     batch_size=32,
     hidden_layer=None,
     latent_dim=None,
+    metric='pearson',
 ):
     """
     Compute co-accessibility scores between regions in a sparse matrix, stored
@@ -67,7 +68,7 @@ def compute_atac_network(
 
     Two methods are available:
     - 'graphical_lasso': Uses graphical lasso with distance penalties (default)
-    - 'vae': Uses VAE latent embeddings with Pearson correlation
+    - 'vae': Uses VAE latent embeddings with correlation or cosine similarity
 
     Parameters
     ----------
@@ -143,6 +144,9 @@ def compute_atac_network(
     latent_dim : int, optional
         Latent dimension for VAE. Auto-determined if None.
         Only used with 'vae' method.
+    metric : str, optional
+        Metric to use for computing similarity: 'pearson' or 'cosine'.
+        Default is 'pearson'. Only used with 'vae' method.
 
     Returns
     -------
@@ -168,6 +172,7 @@ def compute_atac_network(
             hidden_layer=hidden_layer,
             latent_dim=latent_dim,
             verbose=verbose,
+            metric=metric,
         )
     else:
         adata.varp[key] = sliding_graphical_lasso(
