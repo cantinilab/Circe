@@ -68,7 +68,7 @@ extensions = [
 
 setup(
     name='circe-py',
-    version='0.3.9',
+    version='0.4.0',
     description='Circe: Package for building co-accessibility networks from ATAC-seq data.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -89,7 +89,7 @@ setup(
     options={'bdist_wheel': {'universal': True}},
     install_requires=[
         'Cython',
-        'numpy<2.0.0',
+        'numpy>=1.23',
         'pandas',
         'scikit-learn>=1.6',
         'joblib>=1.1.0',
