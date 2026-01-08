@@ -168,8 +168,6 @@ def compute_atac_network(
             hidden_layer=hidden_layer,
             latent_dim=latent_dim,
             verbose=verbose,
-            njobs=njobs,
-            chromosomes_sizes=chromosomes_sizes,
         )
     else:
         adata.varp[key] = sliding_graphical_lasso(

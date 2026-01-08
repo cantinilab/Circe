@@ -4,9 +4,8 @@ import numpy as np
 import scipy as sp
 import scipy.sparse
 import anndata as ad
-import tqdm
 from typing import Optional
-from joblib import Parallel, delayed, parallel_config
+from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from circe.circe import reconcile
 
@@ -104,7 +103,6 @@ def compute_latent_network(
     hidden_layer: Optional[int] = None,
     latent_dim: Optional[int] = None,
     verbose: int = 0,
-    njobs: int = 1,
 ) -> scipy.sparse.csr_matrix:
     """
     Compute co-accessibility scores using VAE latent embeddings.
@@ -127,8 +125,6 @@ def compute_latent_network(
         Latent dimension. Auto-determined if None.
     verbose : int
         Verbosity level (0, 1, or 2).
-    njobs : int
-        Number of parallel jobs for chromosome processing.
 
     Returns
     -------
@@ -168,42 +164,37 @@ def compute_latent_network(
         print('Extracting latent embeddings...')
     latent_embeddings = _extract_latent_embeddings(vae, x_train, batch_size)
     
+    # Process each chromosome with progress bar
+    chromosomes = list(adata.var['chromosome'].unique())
+    progress_columns = (
+        '[progress.description]{task.description}',
+        BarColumn(),
+        '[progress.percentage]{task.percentage:>3.0f}%',
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    )
+    
+    chr_results = []
+    with Progress(*progress_columns, transient=False, disable=(verbose < 1)) as prog:
+        task = prog.add_task('Processing chromosomes', total=len(chromosomes))
+        for chromosome in chromosomes:
+            chr_mask = (adata.var['chromosome'] == chromosome).values
+            result = chr_latent_correlation(
+                adata.var.loc[chr_mask, :].copy(),
+                chr_latent_embeddings=latent_embeddings[chr_mask],
+                window_size=window_size,
+                max_elements=max_elements,
+            )
+            chr_results.append(result)
+            prog.update(task, advance=1)
+    
     if verbose >= 1:
-        print('Computing correlations within windows...')
-    
-    def _make_chr_args(n, chromosome):
-        chr_mask = (adata.var['chromosome'] == chromosome).values
-        return (
-            adata.var.loc[chr_mask, :].copy(),
-            chromosome,
-            latent_embeddings[chr_mask],
-            window_size,
-            max_elements,
-            n,
-            verbose < 1,
-        )
-    
-    with parallel_config(n_jobs=njobs):
-        chr_results = Parallel(n_jobs=njobs, verbose=verbose)(
-            delayed(chr_latent_correlation)(*_make_chr_args(n, chromosome))
-            for n, chromosome in enumerate(adata.var['chromosome'].unique())
-        )
-    
-    if verbose >= 1:
-        print('Concatenating results from all chromosomes...')
+        print('Concatenating results...')
     
     return sp.sparse.block_diag(chr_results, format='csr')
 
 
-def chr_latent_correlation(
-    chr_var,
-    chromosome,
-    chr_latent_embeddings,
-    window_size,
-    max_elements,
-    n=0,
-    disable_tqdm=False,
-):
+def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elements):
     """
     Compute correlations within sliding windows for a single chromosome.
 
@@ -211,18 +202,12 @@ def chr_latent_correlation(
     ----------
     chr_var : DataFrame
         Chromosome var metadata.
-    chromosome : str
-        Chromosome name.
     chr_latent_embeddings : array
         Latent embeddings for peaks in this chromosome (n_peaks, 3*latent_dim).
     window_size : int
         Window size in base pairs.
     max_elements : int
         Maximum peaks per window.
-    n : int
-        Position for tqdm display.
-    disable_tqdm : bool
-        Disable progress bar.
 
     Returns
     -------
@@ -258,8 +243,7 @@ def chr_latent_correlation(
         idx_list = []
         idy_list = []
         
-        for idx in tqdm.tqdm(idxs, position=n, leave=False, disable=disable_tqdm,
-                            desc=f"Processing chromosome: '{chromosome}'"):
+        for idx in idxs:
             scores, global_i, global_j = _compute_window_correlation(
                 idx, chr_latent_embeddings, global_idx
             )
