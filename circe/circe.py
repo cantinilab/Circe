@@ -12,6 +12,7 @@ import numpy as np  # Mathematical operations
 import pandas as pd
 import scipy as sp
 import random
+import anndata as ad
 from functools import reduce
 from circe import quic_graph_lasso  # Graphical Lasso implementation
 from circe.metrics import cov_with_appended_zeros
@@ -237,7 +238,7 @@ def get_distances_regions(data):
     distance : np.array
         Distance between regions.
     """
-    df = data.var if hasattr(data, 'var') else data
+    df = data.var if isinstance(data, ad.AnnData) else data
     centers = (df['end'].values + df['start'].values) / 2
     m, n = np.meshgrid(centers, centers)
     distance = np.abs(m - n)
