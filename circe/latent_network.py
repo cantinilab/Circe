@@ -9,6 +9,7 @@ from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingC
 from sklearn.metrics.pairwise import cosine_similarity
 
 from circe.circe import reconcile
+from circe.metacells import tfidf
 
 
 # -----------------------------------------------------------------------------
@@ -16,9 +17,10 @@ from circe.circe import reconcile
 # -----------------------------------------------------------------------------
 
 def _preprocess_data(adata):
-    """Convert to dense, log2 transform, transpose, and normalize."""
+    """Convert to dense, TF-IDF transform, transpose, and normalize."""
     X = adata.X.toarray() if sp.sparse.issparse(adata.X) else np.asarray(adata.X)
-    X = np.log2(1 + X).T  # Transpose to (n_peaks, n_cells)
+    X = tfidf(X)  # TF-IDF on (cells, peaks)
+    X = X.T       # Transpose to (n_peaks, n_cells)
     
     # Per-row min-max normalization to [0, 1]
     row_min, row_max = X.min(axis=1, keepdims=True), X.max(axis=1, keepdims=True)
