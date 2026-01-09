@@ -1032,7 +1032,6 @@ def sliding_graphical_lasso(
     logger.addHandler(handler)
 
     try:
-        print("Calculating co-accessibility scores...")
         chromosomes = list(adata.var["chromosome"].unique())
         
         with ThreadPoolExecutor(max_workers=njobs) as executor:
@@ -1060,7 +1059,7 @@ def sliding_graphical_lasso(
                 TimeRemainingColumn(),
             )
             with Progress(*progress_columns, transient=False) as prog:
-                task = prog.add_task('Processing chromosomes', total=len(chromosomes))
+                task = prog.add_task('Calculating co-accessibility scores', total=len(chromosomes))
                 for fut in futures_as_completed(futures):
                     chr_results.append(fut.result())
                     prog.update(task, advance=1)
@@ -1084,7 +1083,7 @@ def sliding_graphical_lasso(
                 """)
 
     # Concatenate results from all chromosomes
-    print("Concatenating results...")
+    print("Concatenating results...", flush=True)
     full_results = sp.sparse.block_diag(chr_results, format="csr")
     print("Done.")
     return full_results

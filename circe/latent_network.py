@@ -179,7 +179,7 @@ def compute_latent_network(
     
     chr_results = []
     with Progress(*progress_columns, transient=False, disable=(verbose < 1)) as prog:
-        task = prog.add_task('Processing chromosomes', total=len(chromosomes))
+        task = prog.add_task('Calculating co-accessibility scores', total=len(chromosomes))
         for chromosome in chromosomes:
             chr_mask = (adata.var['chromosome'] == chromosome).values
             result = chr_latent_correlation(
@@ -194,9 +194,14 @@ def compute_latent_network(
         prog.refresh()
     
     if verbose >= 1:
-        print('Concatenating results...')
+        print('Concatenating results...', flush=True)
     
-    return sp.sparse.block_diag(chr_results, format='csr')
+    result = sp.sparse.block_diag(chr_results, format='csr')
+    
+    if verbose >= 1:
+        print('Done.')
+    
+    return result
 
 
 def chr_latent_correlation(chr_var, chr_latent_embeddings, window_size, max_elements, metric='pearson'):
