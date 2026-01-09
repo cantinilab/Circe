@@ -4,7 +4,7 @@ import numpy as np
 import scipy as sp
 import anndata as ad
 
-from circe.utils import ORGANISM_DEFAULTS, reconcile
+from circe.utils import ORGANISM_DEFAULTS, reconcile, resolve_organism_params
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
@@ -131,15 +131,13 @@ def compute_atac_network(
     None.
     """
 
+    # Resolve organism params ONCE at top level
+    window_size, distance_constraint, s = resolve_organism_params(
+        organism, window_size, distance_constraint, s
+    )
+
     if method == 'vae':
         from circe.latent_network import compute_latent_network
-        
-        # Set default window_size if needed
-        if window_size is None:
-            if organism is not None and organism in ORGANISM_DEFAULTS:
-                window_size = ORGANISM_DEFAULTS[organism]["window_size"]
-            else:
-                window_size = ORGANISM_DEFAULTS["human"]["window_size"]
         
         adata.varp[key] = compute_latent_network(
             adata=adata,
@@ -160,7 +158,7 @@ def compute_atac_network(
             unit_distance=unit_distance,
             distance_constraint=distance_constraint,
             s=s,
-            organism=organism,
+            organism=None,  # Already resolved
             max_alpha_iteration=max_alpha_iteration,
             distance_parameter_convergence=distance_parameter_convergence,
             max_elements=max_elements,

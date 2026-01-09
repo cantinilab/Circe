@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import pandas as pd
 import anndata as ad
@@ -10,6 +11,55 @@ ORGANISM_DEFAULTS = {
     'mouse': {'window_size': 500_000, 'distance_constraint': 250_000, 's': 0.75},
     'drosophila': {'window_size': 100_000, 'distance_constraint': 50_000, 's': 0.85},
 }
+
+
+def resolve_organism_params(organism, window_size, distance_constraint, s):
+    """
+    Resolve organism-specific parameters with defaults and validation.
+
+    Parameters
+    ----------
+    organism : str or None
+        Organism name. If None, uses human defaults.
+    window_size : int or None
+        Window size in base pairs.
+    distance_constraint : int or None
+        Distance constraint in base pairs.
+    s : float or None
+        Long-range penalty exponent.
+
+    Returns
+    -------
+    tuple
+        (window_size, distance_constraint, s) with appropriate values set.
+
+    Raises
+    ------
+    ValueError
+        If organism is unknown or distance_constraint > window_size.
+    """
+    if organism is not None:
+        if organism not in ORGANISM_DEFAULTS:
+            raise ValueError(
+                f'Unknown organism: {organism}. Valid: {list(ORGANISM_DEFAULTS.keys())}'
+            )
+        defaults = ORGANISM_DEFAULTS[organism]
+        for key, val in [('window_size', window_size), ('distance_constraint', distance_constraint), ('s', s)]:
+            if val is not None:
+                warnings.warn(f'{key} provided, ignoring organism default.', UserWarning)
+        window_size = window_size or defaults['window_size']
+        distance_constraint = distance_constraint or defaults['distance_constraint']
+        s = s or defaults['s']
+    else:
+        defaults = ORGANISM_DEFAULTS['human']
+        window_size = window_size or defaults['window_size']
+        distance_constraint = distance_constraint or (window_size / 2)
+        s = s or defaults['s']
+    
+    if distance_constraint > window_size:
+        raise ValueError('distance_constraint must be <= window_size')
+    
+    return window_size, distance_constraint, s
 
 
 def cov_to_corr(cov_matrix, tol=1e-20):

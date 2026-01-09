@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_co
 
 from circe import quic_graph_lasso
 from circe.metrics import cov_with_appended_zeros
-from circe.utils import cov_to_corr, ORGANISM_DEFAULTS, reconcile
+from circe.utils import cov_to_corr, ORGANISM_DEFAULTS, reconcile, resolve_organism_params
 
 
 def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
@@ -716,81 +716,11 @@ def sliding_graphical_lasso(
         Dictionary with keys as window names and values as sparse matrices
         (csr) of co-accessibility scores.
     """
-    if organism is not None:
-        if organism in ORGANISM_DEFAULTS:
-            if window_size is None:
-                window_size = ORGANISM_DEFAULTS[organism]["window_size"]
-            else:
-                warnings.warn(
-                    """
-                    window_size is not None, using the value passed as param.
-                    """, UserWarning)
-            if distance_constraint is None:
-                distance_constraint = ORGANISM_DEFAULTS[organism][
-                    "distance_constraint"]
-            else:
-                warnings.warn(
-                    """
-                    distance_constraint is not None,
-                    using the value passed as argument.
-                    """, UserWarning)
-            if s is None:
-                s = ORGANISM_DEFAULTS[organism]["s"]
-            else:
-                warnings.warn(
-                    """
-                    s is not None, using the value passed as argument.
-                    """, UserWarning)
-        else:
-            raise ValueError(
-                f"""
-                Organism not found in ORGANISM_DEFAULTS.
-                Please keep organism=None or use one of the organisms:
-                {list(ORGANISM_DEFAULTS.keys())}.
-                """
-            )
-    else:
-        none_values = []
-        if window_size is None:
-            none_values.append("window_size")
-            window_size = ORGANISM_DEFAULTS["human"]["window_size"]
-        if distance_constraint is None:
-            none_values.append("distance_constraint")
-            distance_constraint = window_size / 2
-        if s is None:
-            none_values.append("s")
-            s = ORGANISM_DEFAULTS["human"]["s"]
-        if none_values:
-            citation = "https://cole-trapnell-lab.github.io/cicero-release/docs_m3/#important-considerations-for-non-human-data"
-            default_values = {key: value for key, value in ORGANISM_DEFAULTS[
-                        "human"].items()
-                        if key in none_values}
-            warnings.warn(
-                f"""
-                No organism, nor value passed for the parameters: {none_values},
-                using default values.
-                The default values are defined from human and mouse data,
-                you might want to change them if you are working with
-                another organisms.
-
-                Default values used:
-                {default_values}
-
-                You can check how to define them in {citation}.
-                """
-            )
-
-    # Check if distance_constraint is not too high
-    if distance_constraint > window_size:
-        raise ValueError(
-            """
-            distance_constraint should be lower than window_size.
-            """
+    # Only resolve if not already done (backward compat for direct calls)
+    if window_size is None or distance_constraint is None or s is None:
+        window_size, distance_constraint, s = resolve_organism_params(
+            organism, window_size, distance_constraint, s
         )
-
-    # Check if distance_constraint is not too high
-    if distance_constraint is None:
-        distance_constraint = window_size / 2
 
     # AnnData object should have more than 1 cell
     if adata.X.shape[0] < 2 or adata.X.shape[1] < 2:
