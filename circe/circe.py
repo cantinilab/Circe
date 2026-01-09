@@ -19,6 +19,7 @@ from circe.metrics import cov_with_appended_zeros
 from circe.utils import cov_to_corr
 from dask.distributed import Client, as_completed  # Parallel execution
 from joblib import Parallel, delayed, parallel_config
+from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_completed
 import asyncio
 
 warnings.filterwarnings(
@@ -1026,22 +1027,38 @@ def sliding_graphical_lasso(
 
     try:
         print("Calculating co-accessibility scores...")
-        # Configure joblib to use the default joblib parameters
-        with parallel_config(n_jobs=njobs):
-            chr_results = Parallel(n_jobs=njobs, verbose=0)(delayed(
-                chr_batch_graphical_lasso)(
-                adata[:, (adata.var["chromosome"] == chromosome).values].X,
-                adata.var.loc[adata.var["chromosome"] == chromosome, :].copy(),
-                chromosome,
-                alpha,
-                unit_distance,
-                window_size,
-                init_method,
-                max_elements,
-                n=n,
-                disable_tqdm=True,
-            ) for n, chromosome in enumerate(
-                adata.var["chromosome"].unique()))
+        chromosomes = list(adata.var["chromosome"].unique())
+        
+        with ThreadPoolExecutor(max_workers=njobs) as executor:
+            futures = {
+                executor.submit(
+                    chr_batch_graphical_lasso,
+                    adata[:, (adata.var["chromosome"] == chrom).values].X,
+                    adata.var.loc[adata.var["chromosome"] == chrom, :].copy(),
+                    chrom,
+                    alpha,
+                    unit_distance,
+                    window_size,
+                    init_method,
+                    max_elements,
+                ): chrom
+                for chrom in chromosomes
+            }
+            
+            chr_results = []
+            progress_columns = (
+                '[progress.description]{task.description}',
+                BarColumn(),
+                '[progress.percentage]{task.percentage:>3.0f}%',
+                TimeElapsedColumn(),
+                TimeRemainingColumn(),
+            )
+            with Progress(*progress_columns, transient=False) as prog:
+                task = prog.add_task('Processing chromosomes', total=len(chromosomes))
+                for fut in futures_as_completed(futures):
+                    chr_results.append(fut.result())
+                    prog.update(task, advance=1)
+                prog.refresh()
 
     except Exception as e:
         logger.warning("Exception occurred: %s", e)
@@ -1061,12 +1078,9 @@ def sliding_graphical_lasso(
                 """)
 
     # Concatenate results from all chromosomes
-    if verbose == 0:
-        print("Concatenating results from all chromosomes...")
-    else:
-        print("Concatenating results from all chromosomes as a csr_matrix...")
-
+    print("Concatenating results...")
     full_results = sp.sparse.block_diag(chr_results, format="csr")
+    print("Done.")
     return full_results
 
 
@@ -1079,10 +1093,6 @@ def chr_batch_graphical_lasso(
     window_size,
     init_method,
     max_elements,
-    n=0,
-    njobs=1,
-    disable_tqdm=False,
-    
 ):
 
     results = {}
@@ -1148,8 +1158,7 @@ def chr_batch_graphical_lasso(
             )
             continue
 
-        # Use joblib.Parallel to run the function in parallel
-        # inside one chromosome
+        # Process windows serially
         parallel_lasso_results = [
             single_graphical_lasso(
                 idx,
@@ -1159,11 +1168,8 @@ def chr_batch_graphical_lasso(
                 unit_distance=unit_distance,
                 init_method=init_method,
                 map_indices=map_indices)
-            for idx in tqdm.tqdm(
-                idxs,
-                position=n, leave=False,
-                disable=disable_tqdm,
-                desc=f"Processing chromosome: '{chromosome}'")]
+            for idx in idxs
+        ]
 
         # Unpack the results and concatenate the arrays
         scores_list, idx_list, idy_list = zip(*parallel_lasso_results)
