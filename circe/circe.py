@@ -3,7 +3,8 @@ from typing import Union
 import numpy as np
 import scipy as sp
 import anndata as ad
-from functools import reduce
+
+from circe.utils import ORGANISM_DEFAULTS, reconcile
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
@@ -11,13 +12,6 @@ warnings.filterwarnings(
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
     message=r".*is_categorical_dtype is deprecated and will be removed in a future version.*")
-
-# Organism-specific default parameters
-ORGANISM_DEFAULTS = {
-    'human': {'window_size': 500_000, 'distance_constraint': 250_000, 's': 0.75},
-    'mouse': {'window_size': 500_000, 'distance_constraint': 250_000, 's': 0.75},
-    'drosophila': {'window_size': 100_000, 'distance_constraint': 50_000, 's': 0.85},
-}
 
 
 def compute_atac_network(
@@ -177,54 +171,3 @@ def compute_atac_network(
             verbose=verbose,
             chromosomes_sizes=chromosomes_sizes,
         )
-
-
-def reconcile(
-    results_gl,
-    idx_gl,
-    idy_gl
-):
-
-    results_keys = list(results_gl.keys())
-    #################
-    # To keep entries contained in 2 windows
-    # sum of values per non-null locations
-    average = reduce(lambda x, y: x+y,
-                     [results_gl[k] for k in results_keys])
-
-    # Initiate divider depending on number of overlapping windows
-    divider = sp.sparse.csr_matrix(
-        (np.ones(len(idx_gl[results_keys[0]])),
-         (idx_gl[results_keys[0]],
-          idy_gl[results_keys[0]])),
-        shape=average.shape
-    )
-    for k in results_keys[1:]:
-        divider = divider + sp.sparse.csr_matrix(
-            ([1 for i in range(len(idx_gl[k]))],
-             (idx_gl[k],
-              idy_gl[k])),
-            shape=average.shape
-        )
-
-    # extract all values where there is no sign agreement between windows
-    signs_disaggreeing = reduce(
-        lambda x, y: sp.sparse.csr_matrix.multiply((x > 0), (y < 0)),
-        [results_gl[k] for k in results_keys])
-    signs_disaggreeing += reduce(
-        lambda x, y: sp.sparse.csr_matrix.multiply((x < 0), (y > 0)),
-        [results_gl[k] for k in results_keys])
-
-    # Remove disagreeing values from average
-    average = average - sp.sparse.csr_matrix.multiply(
-        average, signs_disaggreeing)
-    # Remove also disagreeing values from divider
-    divider = sp.sparse.csr_matrix.multiply(
-        divider, average.astype(bool).astype(int))
-
-    # Delete the sign_disagreeing matrix
-    del signs_disaggreeing
-
-    # Divide the sum by number of values
-    average.data = average.data/divider.data
-    return average

@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import scipy as sp
 import anndata as ad
-from functools import reduce
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 from dask.distributed import Client, as_completed
 from joblib import Parallel, delayed
@@ -17,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_co
 
 from circe import quic_graph_lasso
 from circe.metrics import cov_with_appended_zeros
-from circe.utils import cov_to_corr
+from circe.utils import cov_to_corr, ORGANISM_DEFAULTS, reconcile
 
 
 def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
@@ -205,22 +204,9 @@ def local_alpha(
             break
         else:
             distance_parameter = new_distance_parameter
-
-        # Print warning if maxit is reached
-        if i == maxit - 1:
-            # print("maximum number of iterations hit")
-            pass
     return distance_parameter
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-#  Required extra dependency
-#       pip install "dask[distributed]" rich
-
-# ──────────────────────────────────────────────────────────────────────────────
-#  Helper : one task = one window
-#  (defined outside to make it picklable; receives **only scalars + adata**)
-# ──────────────────────────────────────────────────────────────────────────────
 def _alpha_task(X_window,
                 zrow,  # number of rows removed (0 if no rows filled with 0s)
                 chromosomes,          # 1-D array[str]  (len = n_peaks)
@@ -299,7 +285,7 @@ def _build_payload(adata, window_idx):
 
 
 def _remove_null_rows(X):
-    """"""
+    """Remove all-zero rows from matrix, return (filtered_X, n_removed)."""
     if sp.sparse.issparse(X):
         nz_rows = np.flatnonzero(X.getnnz(axis=1))
         zrows = X.shape[0] - nz_rows.shape[0]
@@ -364,7 +350,7 @@ def average_alpha(
     n_workers: int = 1,
     threads_per_worker: int = 1,
 ):
-    """"
+    """
     Estimate the **global sparsity‐penalty coefficient α** used by
     _sliding graphical lasso_ on scATAC-seq data.
 
@@ -423,7 +409,7 @@ def average_alpha(
     client : dask.distributed.Client, optional
         Existing Dask client / cluster.  When *None* (default) a **local**
         cluster is started with the resources below and shut down on exit.
-    n_workers : int, default 8
+    n_workers : int, default 1
         Number of worker processes in the auto-started local cluster (ignored
         if `client` is provided).
     threads_per_worker : int, default 1
@@ -604,8 +590,7 @@ def average_alpha(
                     prog.update(bar, advance=1)
                     prog.refresh()
                 else:
-                    print("Window skipped (no long edges" +
-                          " or too many elements).")
+                    print("Window skipped (no long edges or too many elements).")
 
                 if len(alpha_list) >= n_samples:
                     # cancel leftovers and break
@@ -623,14 +608,12 @@ def average_alpha(
                 client.close(timeout="120s")          # wait long, but finite
             except asyncio.TimeoutError:
                 pass                                  # ignore late worker
-        pass
     # ────────────────────────────────────────────────────────────────
     # 4. Clean-up & return
     # ────────────────────────────────────────────────────────────────
     if len(alpha_list) < n_samples and verbose:
         warnings.warn(
-            f"only {len(alpha_list)} windows" +
-            f" were usable (requested {n_samples}).",
+            f"only {len(alpha_list)} windows were usable (requested {n_samples}).",
             UserWarning,
         )
     return float(np.mean(alpha_list)) if alpha_list else np.nan
@@ -733,7 +716,6 @@ def sliding_graphical_lasso(
         Dictionary with keys as window names and values as sparse matrices
         (csr) of co-accessibility scores.
     """
-    from circe.circe import ORGANISM_DEFAULTS
     if organism is not None:
         if organism in ORGANISM_DEFAULTS:
             if window_size is None:
@@ -902,7 +884,7 @@ def sliding_graphical_lasso(
     else:
         if len(log_messages) > 0:
             print(
-                """
+                f"""
                 Logger: {len(log_messages)} warnings message have been returned by distributed
                 about workers memory.\n
                 It's usually expected, but you can display them with verbose=2
@@ -980,7 +962,7 @@ def chr_batch_graphical_lasso(
                 idx_["window_" + str(k)], idy_["window_" + str(k)] = \
                     np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
                     np.concatenate([idy_["window_" + str(k)], y_.flatten()])
-        if idxs == []:
+        if not idxs:
             results["window_" + str(k)] = sp.sparse.coo_matrix(
                 (np.array([], dtype=int),
                  (np.array([], dtype=int),
@@ -1019,7 +1001,6 @@ def chr_batch_graphical_lasso(
         )
 
     # Reconcile results from all windows
-    from circe.circe import reconcile
     return reconcile(results, idx_, idy_)
 
 
@@ -1040,13 +1021,9 @@ def single_graphical_lasso(
             np.array([], dtype=int)
 
     # Get submatrix
-    if sp.sparse.issparse(X):
-        window_scores = cov_with_appended_zeros(
-            X.toarray(), zrow, rowvar=False) + \
-            1e-4 * np.eye(X.shape[1])
-    else:
-        window_scores = cov_with_appended_zeros(X, zrow, rowvar=False) + \
-            1e-4 * np.eye(X.shape[1])
+    X_dense = X.toarray() if sp.sparse.issparse(X) else X
+    window_scores = cov_with_appended_zeros(X_dense, zrow, rowvar=False) + \
+        1e-4 * np.eye(X.shape[1])
 
     distance = get_distances_regions(anndata_var)
 

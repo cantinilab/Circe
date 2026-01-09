@@ -8,7 +8,7 @@ from typing import Optional
 from rich.progress import Progress, BarColumn, TimeElapsedColumn, TimeRemainingColumn
 from sklearn.metrics.pairwise import cosine_similarity
 
-from circe.circe import reconcile
+from circe.utils import reconcile
 from circe.metacells import tfidf
 
 
