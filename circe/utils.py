@@ -143,7 +143,7 @@ def sort_regions(adata: ad.AnnData):
     Sort regions by chromosome and start position.
     """
     ord_index = adata.var.sort_values(["chromosome", "start"]).index
-    return adata[:, ord_index]
+    return adata[:, ord_index].copy()
 
 
 def extract_atac_links(
