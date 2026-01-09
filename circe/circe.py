@@ -504,8 +504,13 @@ def quiet_dask(verbose: int):
     else:                               # verbose >= 2
         level = logging.INFO           # or DEBUG
     for name in (
-        "distributed.worker.state_machine",
-        "distributed.nanny",
+        'distributed',
+        'distributed.scheduler',
+        'distributed.worker',
+        'distributed.core',
+        'distributed.nanny',
+        'distributed.http.proxy',
+        'distributed.worker.state_machine',
     ):
         logging.getLogger(name).setLevel(level)
 
@@ -711,7 +716,8 @@ def average_alpha(
         with Progress(
             *progress_columns,
             transient=False,
-            auto_refresh=False
+            auto_refresh=False,
+            disable=(verbose < 1)
         ) as prog:
 
             payloads = Parallel(n_jobs=n_workers, verbose=0)(
@@ -761,7 +767,7 @@ def average_alpha(
         # 3. Collect results until n_samples reached
         # ────────────────────────────────────────────────────────────────
         alpha_list: list[float] = []
-        with Progress(*progress_columns, transient=False) as prog:
+        with Progress(*progress_columns, transient=False, disable=(verbose < 1)) as prog:
             bar = prog.add_task(
                 "Calculating alpha",
                 total=n_samples, auto_refresh=False)

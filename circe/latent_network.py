@@ -12,10 +12,6 @@ from circe.circe import reconcile
 from circe.metacells import tfidf
 
 
-# -----------------------------------------------------------------------------
-# Private helper functions
-# -----------------------------------------------------------------------------
-
 def _preprocess_data(adata):
     """Convert to dense, TF-IDF transform, transpose, and normalize."""
     X = adata.X.toarray() if sp.sparse.issparse(adata.X) else np.asarray(adata.X)
@@ -95,10 +91,6 @@ def _compute_window_correlation(idx, chr_latent_embeddings, global_idx, metric='
     
     return scores, global_i, global_j
 
-
-# -----------------------------------------------------------------------------
-# Public functions
-# -----------------------------------------------------------------------------
 
 def compute_latent_network(
     adata: ad.AnnData,
