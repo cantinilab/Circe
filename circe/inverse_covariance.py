@@ -2,15 +2,12 @@
 # Added a precomputed option for the covariance matrix in _init_coefs
 
 
-from __future__ import absolute_import
-
 import numpy as np
 from sklearn.base import BaseEstimator
 
 from . import metrics
 from .rank_correlation import spearman_correlation, kendalltau_correlation
 
-from scipy.sparse import issparse
 import scipy as sp
 
 

@@ -4,7 +4,6 @@ import logging
 import warnings
 import random
 import asyncio
-from typing import Union
 import numpy as np
 import pandas as pd
 import scipy as sp
@@ -17,6 +16,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed as futures_as_co
 from circe import quic_graph_lasso
 from circe.metrics import cov_with_appended_zeros
 from circe.utils import cov_to_corr, ORGANISM_DEFAULTS, reconcile, resolve_organism_params
+
+_MAP_INDICES_COL = "global_idx"
+
+
+class _ListLogHandler(logging.Handler):
+    """Handler that appends formatted records to an external list."""
+    def __init__(self, target_list):
+        super().__init__()
+        self.target_list = target_list
+    
+    def emit(self, record):
+        self.target_list.append(self.format(record))
 
 
 def calc_penalty(alpha, distance, unit_distance=1000, s=0.75):
@@ -68,8 +79,7 @@ def get_distances_regions(data):
     """
     df = data.var if isinstance(data, ad.AnnData) else data
     centers = (df['end'].values + df['start'].values) / 2
-    m, n = np.meshgrid(centers, centers)
-    distance = np.abs(m - n)
+    distance = np.abs(centers[:, np.newaxis] - centers)
     np.fill_diagonal(distance, 0)
     return distance
 
@@ -148,11 +158,12 @@ def local_alpha(
     distance_parameter_max = 2
     distance_parameter_min = 0
 
-    for i in range(maxit):
-        # Get covariance matrix
-        cov = cov_with_appended_zeros(X, zrow, rowvar=False)
-        # Add small value to diagonal to enforce convergence is lasso ?
-        cov = cov + 1e-4 * np.eye(len(cov))
+    # Get covariance matrix (computed once since X and zrow don't change)
+    cov = cov_with_appended_zeros(X, zrow, rowvar=False)
+    # Add small value to diagonal to enforce convergence is lasso ?
+    cov = cov + 1e-4 * np.eye(len(cov))
+
+    for _ in range(maxit):
         # Get penalties
         penalties = calc_penalty(
             distance_parameter,
@@ -308,19 +319,12 @@ def quiet_dask(verbose: int):
     verbose = 1   → keep WARNINGS (default)
     verbose ≥ 2   → keep everything (INFO / DEBUG)
     """
-    if verbose == 0:
-        level = logging.ERROR          # show only errors
-    elif verbose == 1:
-        level = logging.WARNING        # default
-    else:                               # verbose >= 2
-        level = logging.INFO           # or DEBUG
+    levels = {0: logging.ERROR, 1: logging.WARNING}
+    level = levels.get(verbose, logging.INFO)
+    
     for name in (
-        'distributed',
-        'distributed.scheduler',
-        'distributed.worker',
-        'distributed.core',
-        'distributed.nanny',
-        'distributed.http.proxy',
+        'distributed', 'distributed.scheduler', 'distributed.worker',
+        'distributed.core', 'distributed.nanny', 'distributed.http.proxy',
         'distributed.worker.state_machine',
     ):
         logging.getLogger(name).setLevel(level)
@@ -472,16 +476,14 @@ def average_alpha(
 
     # Keep only windows larger than the distance constraint (i.e. with at least
     # one long-range edge)
+    var_ends = adata.var["end"].values
+    var_starts = adata.var["start"].values
     random_windows = [
         window for window in random_windows
-        if (
-            (adata.var.loc[adata.var_names[window[-1]], "end"]
-                + adata.var.loc[adata.var_names[window[-1]], "start"])/2
-            -
-            (adata.var.loc[adata.var_names[window[0]], "end"]
-                + adata.var.loc[adata.var_names[window[0]], "start"])/2
-            > distance_constraint
-            )]
+        if (var_ends[window[-1]] + var_starts[window[-1]]) / 2
+           - (var_ends[window[0]] + var_starts[window[0]]) / 2
+           > distance_constraint
+    ]
     # ────────────────────────────────────────────────────────────────
     # 1. Dask client (local if none supplied)
     # ────────────────────────────────────────────────────────────────
@@ -621,7 +623,7 @@ def average_alpha(
 
 def sliding_graphical_lasso(
     adata,
-    window_size: Union[int, None] = None,
+    window_size: int | None = None,
     unit_distance=1_000,
     distance_constraint=None,
     s=None,
@@ -636,7 +638,7 @@ def sliding_graphical_lasso(
     seed=42,
     njobs=1,
     threads_per_worker=1,
-    chromosomes_sizes: Union[dict, None] = None
+    chromosomes_sizes: dict | None = None
 ):
     """
     Estimate co-accessibility scores between regions penalized on distance.
@@ -754,9 +756,6 @@ def sliding_graphical_lasso(
         print(f"Alpha coefficient calculated : {alpha}")
 
     # Custom log handler to capture log messages of distributed on memory
-    class ListLogHandler(logging.Handler):
-        def emit(self, record):
-            log_messages.append(self.format(record))
     logger = logging.getLogger('distributed.worker.memory')
     logger.setLevel(logging.WARNING)
     logger.propagate = False
@@ -764,7 +763,7 @@ def sliding_graphical_lasso(
         logger.removeHandler(handler)
     # List to store log messages
     log_messages = []
-    handler = ListLogHandler()
+    handler = _ListLogHandler(log_messages)
     handler.setFormatter(
         logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(handler)
@@ -843,7 +842,7 @@ def chr_batch_graphical_lasso(
     idy_ = {}
     start_slidings = [0, int(window_size / 2)]
 
-    map_indices = "global_idx"
+    map_indices = _MAP_INDICES_COL
     if map_indices in chr_var:
         # if it already exists, check that it contains the same numbering
         old = chr_var[map_indices].to_numpy()
@@ -875,6 +874,8 @@ def chr_batch_graphical_lasso(
         ]
 
         idxs = []
+        idx_parts = []
+        idy_parts = []
         for start in window_starts:
             end = start + window_size
             # Get global indices of regions in the window
@@ -887,11 +888,13 @@ def chr_batch_graphical_lasso(
                     )[0]
             if 1 < len(idx) <= max_elements:
                 idxs.append(idx)
-                x_, y_ = \
-                    np.meshgrid(idxs[-1], idxs[-1])
-                idx_["window_" + str(k)], idy_["window_" + str(k)] = \
-                    np.concatenate([idx_["window_" + str(k)], x_.flatten()]), \
-                    np.concatenate([idy_["window_" + str(k)], y_.flatten()])
+                x_, y_ = np.meshgrid(idx, idx)
+                idx_parts.append(x_.flatten())
+                idy_parts.append(y_.flatten())
+        
+        # Single concatenation at end
+        idx_["window_" + str(k)] = np.concatenate(idx_parts) if idx_parts else np.array([], dtype=int)
+        idy_["window_" + str(k)] = np.concatenate(idy_parts) if idy_parts else np.array([], dtype=int)
         if not idxs:
             results["window_" + str(k)] = sp.sparse.coo_matrix(
                 (np.array([], dtype=int),

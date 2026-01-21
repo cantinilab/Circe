@@ -1,7 +1,7 @@
-import sklearn
 import scipy as sp
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import normalize
+from sklearn.utils.extmath import randomized_svd
 import numpy as np
 import anndata as ad
 import scanpy as sc
@@ -88,34 +88,29 @@ def compute_metacells(
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
     metacells = [indices[0]]
-    iterations = 0
-    for i in track(indices[1:], description="Computing metacells..."):
-        if iterations >= max_metacells-1:
+    for idx, candidate in enumerate(track(indices[1:], description="Computing metacells..."), start=1):
+        if idx >= max_metacells:
             break
 
         no_overlap = True
         for metacell in metacells:
-            if len(metacell.intersection(i)) >= max_overlap_metacells * k:
+            if len(metacell.intersection(candidate)) >= max_overlap_metacells * k:
                 no_overlap = False
                 break
         if no_overlap:
-            metacells.append(i)
-        iterations += 1
+            metacells.append(candidate)
 
     # Sum expression of neighbors composing the metacell
+    is_sparse = sp.sparse.issparse(adata.X)
     metacells_values = []
     for metacell in metacells:
-        indices = list(metacell)
+        cell_indices = list(metacell)
         if method == 'mean':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(adata.X[indices].mean(axis=0).A1)
-            else:
-                metacells_values.append(adata.X[indices].mean(axis=0))
+            vals = adata.X[cell_indices].mean(axis=0)
+            metacells_values.append(vals.A1 if is_sparse else vals)
         elif method == 'sum':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(adata.X[indices].sum(axis=0).A1)
-            else:
-                metacells_values.append(adata.X[indices].sum(axis=0))
+            vals = adata.X[cell_indices].sum(axis=0)
+            metacells_values.append(vals.A1 if is_sparse else vals)
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
@@ -183,7 +178,7 @@ def lsi(
     X = tfidf(adata_use.X)
     X_norm = normalize(X, norm="l1")
     X_norm = np.log1p(X_norm * 1e4)
-    X_lsi = sklearn.utils.extmath.randomized_svd(X_norm, n_components, **kwargs)[0]
+    X_lsi = randomized_svd(X_norm, n_components, **kwargs)[0]
     X_lsi -= X_lsi.mean(axis=1, keepdims=True)
     X_lsi /= X_lsi.std(axis=1, ddof=1, keepdims=True)
     adata.obsm["X_lsi"] = X_lsi

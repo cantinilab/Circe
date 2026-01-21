@@ -1,21 +1,48 @@
-# Project information -- not used kept for readability
-[tool.poetry]
-name = "circe-py"
-version = "0.4.0"
-description = "Circe: Package for building co-accessibility networks from ATAC-seq data."
-authors = ["Rémi Trimbour <remi.trimbour@pasteur.fr>"]
-packages = [{include = "circe"}]
-license = "GPL-3.0-only"
-readme = "README.md"
-
-# Build dependencies
 [build-system]
-requires = ["wheel", "setuptools>=0.64", "numpy>=1.23", "cython"]
-build-backend = "setuptools.build_meta"
+requires = ['wheel', 'setuptools>=64', 'numpy>=1.23', 'cython']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'circe-py'
+version = '0.4.0'
+description = 'Circe: Package for building co-accessibility networks from ATAC-seq data.'
+readme = 'README.md'
+license = {text = 'GPL-3.0-only'}
+authors = [
+    {name = 'Rémi Trimbour', email = 'remi.trimbour@pasteur.fr'}
+]
+maintainers = [
+    {name = 'Rémi Trimbour', email = 'remi.trimbour@gmail.com'}
+]
+requires-python = '>=3.10'
+dependencies = [
+    'Cython',
+    'numpy>=1.23',
+    'pandas',
+    'scikit-learn>=1.6',
+    'joblib>=1.1.0',
+    'scanpy>=1.8.1',
+    'anndata',
+    'rich>=10.12.0',
+    'dask',
+    'distributed',
+    'attrs>=20.3; python_version < "3.12"',
+    'attrs>=23.2; python_version >= "3.12"',
+]
+
+[project.optional-dependencies]
+downloads = ['pybiomart']
+
+[project.urls]
+Homepage = 'https://github.com/cantinilab/circe'
+Repository = 'https://github.com/cantinilab/circe'
+
+[tool.setuptools]
+packages = ['circe']
 
 [tool.black]
 line-length = 100
-target-version = ["py38"]
+target-version = ['py310']
 
 [tool.isort]
 include_trailing_comma = true

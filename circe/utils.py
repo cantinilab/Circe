@@ -115,11 +115,10 @@ def subset_region(adata: ad.AnnData, chromosome, start, end):
         anndata object subsetted on the region defined by chr, start and end.
     """
 
-    if len([True for i in adata.var.columns
-            if i in ["chromosome", "start", "end"]]) < 3:
+    if not {"chromosome", "start", "end"}.issubset(adata.var.columns):
         raise KeyError(
             """
-            'chr', 'start' and 'end' columns are not present in var.
+            'chromosome', 'start' and 'end' columns are not present in var.
             Please use 'add_region_infos' function to add these informations
             to your adata object.
             """
@@ -163,13 +162,13 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_")):
     regions_list = adata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
-    regions_list = regions_list.str.replace(sep[1], sep[0])
+    regions_list = regions_list.str.replace(sep[1], sep[0], regex=False)
 
     # Split region names
     regions_list = regions_list.str.split(sep[0]).tolist()
 
     # Check if all regions have the same number of elements
-    if set([len(i) for i in regions_list]) != set([3]):
+    if not all(len(i) == 3 for i in regions_list):
         raise ValueError(
             f"""
             Not all regions have the same number of elements.
@@ -332,7 +331,7 @@ def reconcile(
     )
     for k in results_keys[1:]:
         divider = divider + sp.sparse.csr_matrix(
-            ([1 for i in range(len(idx_gl[k]))],
+            (np.ones(len(idx_gl[k])),
              (idx_gl[k],
               idy_gl[k])),
             shape=average.shape

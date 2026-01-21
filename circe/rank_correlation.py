@@ -2,7 +2,6 @@
 
 """Nonparametric rank correlation estimators as alternative to
  linear correlation estimators."""
-from __future__ import absolute_import
 
 import numpy as np
 from scipy.stats import rankdata, kendalltau, weightedtau

@@ -1,19 +1,11 @@
 # Code from https://github.com/skggm/skggm
 
 
-from __future__ import absolute_import
-
 import sys
-import time
-import operator
 import numpy as np
-from functools import partial
 
-from sklearn.covariance import EmpiricalCovariance
-from sklearn.utils import check_array, as_float_array, deprecated
+from sklearn.utils import check_array, as_float_array
 from numpy.testing import assert_array_almost_equal
-from joblib import Parallel, delayed
-from sklearn.model_selection import cross_val_score, RepeatedKFold
 
 import circe.pyquic
 from .inverse_covariance import (
