@@ -135,11 +135,11 @@ Visualisation
    :align: center
 
 
-Bencmark & comparison to the Cicero R package
+Benchmark & comparison to the Cicero R package
 ------------------------------
 All tests run in the preprint can be found in the  `CIRCE benchmark repo <https://github.com/cantinilab/Circe_reproducibility>`_..
 
-Metacells computation might create differences, but scores will be identical when applied to the same metacalls (cf comparison plots below).
+Metacells computation might cause differences, but scores will be identical when applied to the same metacells (cf. comparison plots below).
 It should run significantly faster than Cicero (e.g., running time of 5 sec instead of 17 min for dataset 2).
 *On the same metacells obtained from the Cicero code.*
 
