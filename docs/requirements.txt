@@ -7,3 +7,5 @@ myst_nb
 furo
 tqdm
 pybiomart
+circe-py
+rich
