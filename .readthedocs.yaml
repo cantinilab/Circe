@@ -14,10 +14,10 @@ build:
 python:
   install:
     - requirements: docs/requirements.txt
-    - method: pip
+#    - method: pip
 #      path: .
-      extra_requirements:
-        - docsbuild
+#      extra_requirements:
+#        - docsbuild
 
 sphinx:
   configuration: docs/source/conf.py
