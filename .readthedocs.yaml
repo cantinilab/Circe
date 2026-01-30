@@ -9,18 +9,14 @@ build:
     - liblapack-dev
     - gfortran
 
-submodules:
-  include: all
-  recursive: true
-
-
 # We recommend specifying your dependencies to enable reproducible builds:
 # https://docs.readthedocs.io/en/stable/guides/reproducible-builds.html
 python:
   install:
     - requirements: docs/requirements.txt
     - method: pip
-      path: .
+      packages:
+        - circe-py
       extra_requirements:
         - docsbuild
 
