@@ -15,7 +15,8 @@ python:
   install:
     - requirements: docs/requirements.txt
     - method: pip
-      path: .
+      packages: circe-py
+      # path: .
       extra_requirements:
         - docsbuild
 
