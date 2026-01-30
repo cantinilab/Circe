@@ -20,8 +20,11 @@ release = '0.3.8'
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../"))
-
+on_rtd = os.environ.get("READTHEDOCS") == "True"
+if not on_rtd:
+    import sys
+    sys.path.insert(0, os.path.abspath("../.."))
+  
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = ["myst_nb", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
