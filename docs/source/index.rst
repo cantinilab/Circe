@@ -29,6 +29,16 @@ CIRCE: Cis-regulatory interactions between chromatin regions
 
    examples/*
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :glob:
+   :caption: API Reference
+
+   API/*
+
+
+
 .. image:: https://github.com/cantinilab/circe/actions/workflows/codecov.yaml/badge.svg
    :target: https://github.com/cantinilab/circe/actions/workflows/codecov.yaml
    :alt: Unit Tests
