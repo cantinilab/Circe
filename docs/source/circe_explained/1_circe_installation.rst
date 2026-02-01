@@ -29,7 +29,7 @@ If you are working in a conda environment and are encountering any issue with th
 .. code-block:: bash
 
     conda install conda-forge::lapack
-    conda install libfortran=3
+    conda install conda-forge::libfortran=3
     conda install -c conda-forge cmake llvmlite=0.46
     conda install gxx_linux-64
 
