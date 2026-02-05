@@ -16,6 +16,8 @@ maintainers = [
 ]
 requires-python = '>=3.10'
 dependencies = [
+    'cmake',
+    'numba',
     'Cython',
     'numpy>=1.23',
     'pandas',

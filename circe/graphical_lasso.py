@@ -787,7 +787,7 @@ def sliding_graphical_lasso(
                 for chrom in chromosomes
             }
             
-            chr_results = []
+            chr_results_dict = {}
             progress_columns = (
                 '[progress.description]{task.description}',
                 BarColumn(),
@@ -798,9 +798,12 @@ def sliding_graphical_lasso(
             with Progress(*progress_columns, transient=False) as prog:
                 task = prog.add_task('Calculating co-accessibility scores', total=len(chromosomes))
                 for fut in futures_as_completed(futures):
-                    chr_results.append(fut.result())
+                    chrom = futures[fut]
+                    chr_results_dict[chrom] = fut.result()
                     prog.update(task, advance=1)
                 prog.refresh()
+            # Reconstruct results in original chromosome order
+            chr_results = [chr_results_dict[c] for c in chromosomes]
 
     except Exception as e:
         logger.warning("Exception occurred: %s", e)
