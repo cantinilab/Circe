@@ -1,7 +1,7 @@
-import sklearn
 import scipy as sp
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import normalize
+from sklearn.utils.extmath import randomized_svd
 import numpy as np
 import anndata as ad
 import scanpy as sc
@@ -66,10 +66,10 @@ def compute_metacells(
         sc.pp.neighbors(adata, use_rep=key_dim_reduction, metric=metric)
     elif dim_reduction in adata.obsm.keys():
         key_dim_reduction = dim_reduction
-        print("Using adata.obsm['{}'] to identify neighboring cells".format(dim_reduction))
+        print(f"Using adata.obsm['{dim_reduction}'] to identify neighboring cells")
         sc.pp.neighbors(adata, use_rep=dim_reduction, metric=metric)
     else:
-        raise "Only 'lsi' is implemented for now, and no adata.obsm['{}'] coordinates found.".format(dim_reduction)
+        raise ValueError(f"Only 'lsi' is implemented for now, and no adata.obsm['{dim_reduction}'] coordinates found.")
 
     if projection == 'umap':
         sc.tl.umap(adata)
@@ -77,7 +77,7 @@ def compute_metacells(
     elif projection is None:
         key_projection = key_dim_reduction
     else:
-        raise "Only 'umap' and None are implemented for now."
+        raise ValueError("Only 'umap' and None are implemented for now.")
 
     # Identify non-overlapping above a threshold metacells
     nbrs = NearestNeighbors(n_neighbors=k, algorithm='kd_tree').fit(adata.obsm[key_projection])
@@ -88,41 +88,29 @@ def compute_metacells(
 
     # Select metacells that doesn't overlap too much (percentage of same cells of origin  < max_overlap_metacells for each pair)
     metacells = [indices[0]]
-    iterations = 0
-    for i in track(indices[1:], description="Computing metacells..."):
-        if iterations >= max_metacells-1:
+    for idx, candidate in enumerate(track(indices[1:], description="Computing metacells..."), start=1):
+        if idx >= max_metacells:
             break
 
         no_overlap = True
         for metacell in metacells:
-            if len(metacell.intersection(i)) >= max_overlap_metacells * k:
+            if len(metacell.intersection(candidate)) >= max_overlap_metacells * k:
                 no_overlap = False
                 break
         if no_overlap:
-            metacells.append(i)
-        iterations += 1
+            metacells.append(candidate)
 
     # Sum expression of neighbors composing the metacell
+    is_sparse = sp.sparse.issparse(adata.X)
     metacells_values = []
     for metacell in metacells:
+        cell_indices = list(metacell)
         if method == 'mean':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(np.mean([adata.X[i].toarray() for i in metacell], 0))[0]
-                )
-            else:
-                metacells_values.append(
-                    np.mean([adata.X[i] for i in metacell], 0)
-                )
+            vals = adata.X[cell_indices].mean(axis=0)
+            metacells_values.append(vals.A1 if is_sparse else vals)
         elif method == 'sum':
-            if sp.sparse.issparse(adata.X):
-                metacells_values.append(
-                    np.array(sum([adata.X[i].toarray() for i in metacell]))[0]
-                )
-            else:
-                metacells_values.append(
-                    sum([adata.X[i] for i in metacell])
-                )
+            vals = adata.X[cell_indices].sum(axis=0)
+            metacells_values.append(vals.A1 if is_sparse else vals)
 
     # Create a new AnnData object from it
     metacells_AnnData = ad.AnnData(np.array(metacells_values))
@@ -190,7 +178,7 @@ def lsi(
     X = tfidf(adata_use.X)
     X_norm = normalize(X, norm="l1")
     X_norm = np.log1p(X_norm * 1e4)
-    X_lsi = sklearn.utils.extmath.randomized_svd(X_norm, n_components, **kwargs)[0]
+    X_lsi = randomized_svd(X_norm, n_components, **kwargs)[0]
     X_lsi -= X_lsi.mean(axis=1, keepdims=True)
     X_lsi /= X_lsi.std(axis=1, ddof=1, keepdims=True)
     adata.obsm["X_lsi"] = X_lsi

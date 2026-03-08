@@ -1,5 +1,5 @@
-from circe.circe import compute_atac_network, \
-    sliding_graphical_lasso
+from circe.circe import compute_atac_network
+from circe.graphical_lasso import sliding_graphical_lasso
 from circe.utils import add_region_infos, \
     subset_region, \
     sort_regions, \
