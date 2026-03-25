@@ -1,14 +1,14 @@
 import pytest
 import circe as ci
 import circe.downloads
+import circe.draw
 import anndata as ad
 import scipy as sp
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
-import matplotlib.pyplot as plt
+from circe.graphical_lasso import average_alpha
 
 print(ci)
 
@@ -117,7 +117,7 @@ def test_network_atac():
 
     # Test calculate alpha if chromosome sizes is given
     chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(1, nb_chr+1)}
-    ci.circe.average_alpha(
+    average_alpha(
         atac,
         window_size=distance_threshold,
         unit_distance=800,
@@ -129,7 +129,7 @@ def test_network_atac():
     )
 
     # Test calculate alpha n_samples too high for number of window found
-    ci.circe.average_alpha(
+    average_alpha(
         atac,
         window_size=distance_threshold,
         unit_distance=800,

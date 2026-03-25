@@ -1,7 +1,6 @@
 import warnings
 
 from circe.utils import resolve_organism_params
-from circe.graphical_lasso import average_alpha  # noqa: F401 - re-exported for ci.circe.average_alpha
 
 warnings.filterwarnings(
     "ignore", category=FutureWarning,
