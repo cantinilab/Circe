@@ -36,10 +36,10 @@ distance_threshold = 50000
 
 # Add region annotations in AnnData.var dataframe
 def test_annotation_functions():
-    # Does it 'inplace'
-    ci.add_region_infos(atac, inplace=True)
     # Returns a new AnnData object
-    ci.add_region_infos(atac, inplace=False)
+    atac = ci.add_region_infos(atac)
+    # Returns a new AnnData object
+    atac = ci.add_region_infos(atac)
 
     # Wrong name (number of elements)
     with pytest.raises(Exception) as ValueError:
@@ -48,7 +48,7 @@ def test_annotation_functions():
 
 def test_network_atac():
     # Add region annotations in AnnData.var dataframe
-    ci.add_region_infos(atac)
+    atac = ci.add_region_infos(atac)
 
     # Compute network and add it directly in AnnData.varp attribute
     ci.compute_atac_network(

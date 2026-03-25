@@ -1,19 +1,11 @@
 # Code from https://github.com/skggm/skggm
 
 
-from __future__ import absolute_import
-
 import sys
-import time
-import operator
 import numpy as np
-from functools import partial
 
-from sklearn.covariance import EmpiricalCovariance
-from sklearn.utils import check_array, as_float_array, deprecated
+from sklearn.utils import check_array, as_float_array
 from numpy.testing import assert_array_almost_equal
-from joblib import Parallel, delayed
-from sklearn.model_selection import cross_val_score, RepeatedKFold
 
 import circe.pyquic
 from .inverse_covariance import (
@@ -58,8 +50,7 @@ def quic(
 
     Sn, Sm = S.shape
     if Sn != Sm:
-        raise ValueError("Input data must be square. S shape = {}".format(S.shape))
-        return
+        raise ValueError(f"Input data must be square. S shape = {S.shape}")
 
     # Regularization parameter matrix L.
     if isinstance(lam, float):
@@ -302,7 +293,6 @@ class QuicGraphicalLasso(InverseCovarianceEstimator):
 
         if self.mode == "path" and path is None:
             raise ValueError("path required in path mode.")
-            return
 
         super(QuicGraphicalLasso, self).__init__(
             score_metric=score_metric, init_method=init_method, auto_scale=auto_scale
