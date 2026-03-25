@@ -19,6 +19,9 @@ circe/adaptative_graph_lasso.py
 # Ignore build directory
 build
 
+# Ignore Cython-generated C++ files
+pyquic_ext/pyquic.cpp
+
 # Ignore dist directory
 dist
 

@@ -173,7 +173,7 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_")):
             f"""
             Not all regions have the same number of elements.
             Check if sep is correct, it should be ({sep[0]}, {sep[1]}),
-            with only one occurence each in region names.
+            with only one occurrence each in region names.
             """
         )
 
