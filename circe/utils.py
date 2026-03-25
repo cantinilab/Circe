@@ -78,7 +78,7 @@ def subset_region(adata: ad.AnnData, chromosome, start, end):
     return adata
 
 
-def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
+def add_region_infos(adata: ad.AnnData, sep=("_", "_")):
     """
     Get region informations from the var_names of adata object.
     e.g. chr1_12345_12346 -> 'chromosome' : chr1,
@@ -99,27 +99,25 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
     Returns
     -------
     adata : anndata object
-        anndata object with region informations in var.
+        anndata object with region informations in var, sorted by chromosome
+        and start position.
     """
-    # Check if user wants to modify anndata inplace or return a copy
     regions_list = adata.var_names
 
     # Replace sep[1] with sep[0] to make it easier to split
-    regions_list = regions_list.str.replace(sep[1], sep[0])
+    regions_list = regions_list.str.replace(sep[1], sep[0], regex=False)
 
     # Split region names
     regions_list = regions_list.str.split(sep[0]).tolist()
 
     # Check if all regions have the same number of elements
-    if set([len(i) for i in regions_list]) != set([3]):
+    if not all(len(i) == 3 for i in regions_list):
         raise ValueError(
-            """
+            f"""
             Not all regions have the same number of elements.
-            Check if sep is correct, it should be ({}, {}),
-            with only one occurence each in region names.
-            """.format(
-                sep[0], sep[1]
-            )
+            Check if sep is correct, it should be ({sep[0]}, {sep[1]}),
+            with only one occurrence each in region names.
+            """
         )
 
     # Extract region informations from var_names
@@ -137,12 +135,7 @@ def add_region_infos(adata: ad.AnnData, sep=("_", "_"), inplace=False):
     adata.var["start"] = region_infos["start"]
     adata.var["end"] = region_infos["end"]
 
-    adata = sort_regions(adata)
-    # Return anndata if inplace is False
-    if inplace:
-        pass
-    else:
-        return adata
+    return sort_regions(adata)
 
 
 def sort_regions(adata: ad.AnnData):
