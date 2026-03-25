@@ -8,3 +8,6 @@ from circe.utils import add_region_infos, \
 from circe.draw import plot_connections
 from circe.ccan_module import find_ccans, add_ccans
 from circe import metacells
+from circe import circe
+from circe import draw
+from circe import downloads

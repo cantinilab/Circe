@@ -1,4 +1,3 @@
-from pybiomart import Server
 import pandas as pd
 
 
@@ -23,6 +22,7 @@ def download_genes(
         DataFrame with gene coordinates.
     """
 
+    from pybiomart import Server
     server = Server(host=server)
     dataset = server['ENSEMBL_MART_ENSEMBL'][species]
 
