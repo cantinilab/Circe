@@ -136,7 +136,7 @@ Visualisation
 
 
 Benchmark & comparison to the Cicero R package
-------------------------------
+-----------------------------------------------
 All tests run in the preprint can be found in the  `CIRCE benchmark repo <https://github.com/cantinilab/Circe_reproducibility>`_..
 
 Metacells computation might cause differences, but scores will be identical when applied to the same metacells (cf. comparison plots below).
@@ -178,8 +178,3 @@ Trimbour R., Saez-Rodriguez J., Cantini L. (2026). CIRCE: a scalable Python pack
 Bioinformatics, 42(3), btag092. https://doi.org/10.1093/bioinformatics/btag092
 
 
-.. toctree::
-   :maxdepth: 1
-   :caption: Contents
-
-   examples/*
