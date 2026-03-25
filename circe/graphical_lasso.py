@@ -355,21 +355,13 @@ def average_alpha(
     threads_per_worker: int = 1,
 ):
     """
-    Estimate the **global sparsity‐penalty coefficient α** used by
-    _sliding graphical lasso_ on scATAC-seq data.
+    Estimate the global sparsity-penalty coefficient α used by
+    sliding graphical lasso on scATAC-seq data.
 
-    The function samples `n_samples` genomic windows, fits an "individual"
+    The function samples ``n_samples`` genomic windows, fits an individual
     α for each window (via :func:`local_alpha`) and returns their average.
     Windows that do not satisfy quality criteria (size < ``max_elements``,
     <5 % long-range edges, <20 % co-accessible regions) are skipped.
-
-    Parallel implementation
-    -----------------------
-    • One genomic window = one task executed in a Dask cluster.  
-    • The full :class:`anndata.AnnData` object is broadcast to workers.
-    • Tasks stream back through :func:`dask.distributed.as_completed`; as soon
-      as `n_samples` usable α's are collected, the remaining tasks are
-      cancelled.
 
     Parameters
     ----------
@@ -385,7 +377,7 @@ def average_alpha(
         Number of windows retained to compute the average α.
     n_samples_maxtry : int, default 500
         Maximum number of candidate windows to inspect in order to obtain
-        `n_samples` valid ones.
+        ``n_samples`` valid ones.
     max_alpha_iteration : int, default 100
         Maximum iterations in the fixed-point search performed by
         :func:`local_alpha`.
@@ -398,24 +390,21 @@ def average_alpha(
     max_elements : int, default 200
         Upper bound on the number of regions (columns) allowed in a window.
     chromosomes_sizes : dict, optional
-        Mapping ``{chromosome: size_in_bp}``.  
-        By default the maximum ``end`` coordinate found in `adata.var`
+        Mapping ``{chromosome: size_in_bp}``.
+        By default the maximum ``end`` coordinate found in ``adata.var``
         is used for each chromosome.
-    init_method : {"precomputed", ...}, default "precomputed"
+    init_method : str, default "precomputed"
         Initialisation method forwarded to :func:`local_alpha`.
     seed : int, default 42
         Random seed used for the window shuffle.
     verbose : bool, default False
-        Emit warnings when fewer than `n_samples` usable windows are found.
-
-    Parallel-execution options
-    --------------------------
+        Emit warnings when fewer than ``n_samples`` usable windows are found.
     client : dask.distributed.Client, optional
-        Existing Dask client / cluster.  When *None* (default) a **local**
+        Existing Dask client / cluster. When ``None`` (default) a local
         cluster is started with the resources below and shut down on exit.
     n_workers : int, default 1
         Number of worker processes in the auto-started local cluster (ignored
-        if `client` is provided).
+        if ``client`` is provided).
     threads_per_worker : int, default 1
         Number of OS threads per worker process.
 
@@ -425,14 +414,15 @@ def average_alpha(
         Mean sparsity-penalty coefficient across the selected windows.
         ``nan`` if no window satisfied the criteria.
 
-    Warnings
-    --------
-    A :class:`UserWarning` is raised (when ``verbose=True``) if fewer than
-    `n_samples` windows pass the filters.
+    Notes
+    -----
+    Parallel implementation: one genomic window = one task executed in a
+    Dask cluster. The full :class:`anndata.AnnData` object is broadcast to
+    workers. Tasks stream back through :func:`dask.distributed.as_completed`;
+    as soon as ``n_samples`` usable α values are collected, the remaining
+    tasks are cancelled.
 
-    Dependencies
-    ------------
-    ``dask[distributed]``, ``rich`` and ``anndata >= 0.9`` must be available.
+    Requires ``dask[distributed]``, ``rich``, and ``anndata >= 0.9``.
     """
 
     # ────────────────────────────────────────────────────────────────

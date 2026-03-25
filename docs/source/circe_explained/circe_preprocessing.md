@@ -1,5 +1,5 @@
 # 🔧 Extended Preprocessing Guidance for CIRCE
-Here are some tips and observations from our benchmarks on preprocessing choices for CIRCE ([Trimbour et al., 2025](https://www.biorxiv.org/content/10.1101/2025.09.23.678054v2)).
+Here are some tips and observations from our benchmarks on preprocessing choices for CIRCE ([Trimbour et al., 2026](https://doi.org/10.1093/bioinformatics/btag092)).
 
 
 ## 1. Count treatment: raw counts, binarization, count correction
@@ -37,7 +37,7 @@ Cicero-style correction also divides accessibility by a per-cell total count. Ho
 
 ## 2. Input type: single-cell vs metacells / pseudobulk
 
-**Single-cell inputs:** As already noted, single-cell resolution yielded better validation against promoter-capture Hi-C (PC-HiC) interactions in the benchmarks with CIRCE. ([Trimbour et al., 2025](https://www.biorxiv.org/content/10.1101/2025.09.23.678054v2))
+**Single-cell inputs:** As already noted, single-cell resolution yielded better validation against promoter-capture Hi-C (PC-HiC) interactions in the benchmarks with CIRCE. ([Trimbour et al., 2026](https://doi.org/10.1093/bioinformatics/btag092))
 
 **Metacells:** Aggregating cells (into metacells) can reduce computational cost and mitigate sparsity, but you still need to generate enough of them or it may lead to decreased AUC.
 

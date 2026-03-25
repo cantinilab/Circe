@@ -78,4 +78,4 @@ These scores help map the structure and dynamics of the regulatory landscape, gu
 
 Pliner,H.A. et al. (2018) Cicero predicts cis-regulatory DNA interactions from single-cell chromatin accessibility data. Mol. Cell, 71, 858-871.e8. [https://doi.org/10.1016/j.molcel.2018.06.044](https://doi.org/10.1016/j.molcel.2018.06.044)
 
-Trimbour,R et al. (2025) CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data. bioRxiv. 2025.09.23.678054. [https://doi.org/10.1101/2025.09.23.678054](https://doi.org/10.1101/2025.09.23.678054)
+Trimbour,R. et al. (2026) CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data. Bioinformatics, 42(3), btag092. [https://doi.org/10.1093/bioinformatics/btag092](https://doi.org/10.1093/bioinformatics/btag092)

@@ -9,7 +9,8 @@
 project = 'CIRCE'
 copyright = '2025, Remi Trimbour'
 author = 'Remi Trimbour'
-release = '0.3.8'
+from importlib.metadata import version
+release = version('circe-py')
 
 # -- Path setup --------------------------------------------------------------
 

@@ -17,8 +17,8 @@
 ## Description
 This repository contains a Python package for inferring **co-accessibility networks from single-cell ATAC-seq data**, using [skggm](https://www.github.com/skggm/skggm) for the graphical lasso and [scanpy](https://www.github.com/theislab/scanpy) for data processing.
 
-You can check our preprint here for more details! 😊<br>
-https://doi.org/10.1101/2025.09.23.678054
+You can check our Bioinformatics paper here for more details! 😊<br>
+https://doi.org/10.1093/bioinformatics/btag092 
 
 While updating the pre-processing, CIRCE's algorithm is based on the pipeline and hypotheses presented in the manuscript "Cicero Predicts cis-Regulatory DNA Interactions from Single-Cell Chromatin Accessibility Data" by Pliner et al. (2018). This original R package [Cicero](https://cole-trapnell-lab.github.io/cicero-release/) is available [here](https://www.github.com/cole-trapnell-lab/cicero-release).
 
@@ -81,7 +81,7 @@ The documentation is still in building, so don't hesitate to open any issues or 
 <br> Metacalls computation might create differences, but scores will be identical when applied to the same metacalls (cf comparison plots below). It should run significantly faster than Cicero _(e.g., running time of 5 sec instead of 17 min for the dataset 2)_.
 <br> *On the same metacells obtained from the Cicero code.*
 
-All tests run in the preprint can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility).
+All tests run in the paper can be found in the [circe benchmark repo](https://github.com/cantinilab/Circe_reproducibility).
 
 ### Real dataset 2 - subsample of 10x PBMC (2021)
 - Pearson correlation coefficient: 0.999958
@@ -97,7 +97,4 @@ Performance on real dataset 2:
 - Gene activity calculation
 
 ## Citation
->  Trimbour R., Saez Rodriguez J., Cantini L. (2025). CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data.
-bioRxiv, 2025.09.23.678054, doi: https://doi.org/10.1101/2025.09.23.678054 
-
-
+>  Rémi Trimbour, Julio Saez-Rodriguez, Laura Cantini, CIRCE: a scalable Python package to predict cis-regulatory DNA interactions from single-cell chromatin accessibility data, Bioinformatics, Volume 42, Issue 3, March 2026, btag092, https://doi.org/10.1093/bioinformatics/btag092 
