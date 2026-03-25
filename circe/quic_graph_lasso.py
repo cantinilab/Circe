@@ -157,7 +157,7 @@ def quic(
 
 
 class QuicGraphicalLasso(InverseCovarianceEstimator):
-    """
+    r"""
     Computes a sparse inverse covariance matrix estimation using quadratic
     approximation.
 
