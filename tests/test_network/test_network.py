@@ -1,5 +1,6 @@
 import pytest
 import circe as ci
+import circe.graphical_lasso
 import circe.downloads
 import anndata as ad
 import scipy as sp
@@ -36,6 +37,7 @@ distance_threshold = 50000
 
 # Add region annotations in AnnData.var dataframe
 def test_annotation_functions():
+    global atac
     # Returns a new AnnData object
     atac = ci.add_region_infos(atac)
     # Returns a new AnnData object
@@ -47,6 +49,7 @@ def test_annotation_functions():
 
 
 def test_network_atac():
+    global atac
     # Add region annotations in AnnData.var dataframe
     atac = ci.add_region_infos(atac)
 
@@ -117,7 +120,7 @@ def test_network_atac():
 
     # Test calculate alpha if chromosome sizes is given
     chromosome_sizes = {f"chr{i}": 10_000_000 for i in range(1, nb_chr+1)}
-    ci.circe.average_alpha(
+    ci.graphical_lasso.average_alpha(
         atac,
         window_size=distance_threshold,
         unit_distance=800,
@@ -129,7 +132,7 @@ def test_network_atac():
     )
 
     # Test calculate alpha n_samples too high for number of window found
-    ci.circe.average_alpha(
+    ci.graphical_lasso.average_alpha(
         atac,
         window_size=distance_threshold,
         unit_distance=800,
