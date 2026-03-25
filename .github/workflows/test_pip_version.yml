@@ -30,8 +30,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install "numpy<2"
         pip install flake8 pytest pre-commit
-        pip install -e ".[downloads]"
+        pip install circe-py
 
     # Run tests and collect coverage
     - name: Run tests

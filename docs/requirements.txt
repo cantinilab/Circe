@@ -5,7 +5,3 @@ sphinx-autodoc-typehints
 sphinx-copybutton
 myst_nb
 furo
-tqdm
-pybiomart
-circe-py
-rich

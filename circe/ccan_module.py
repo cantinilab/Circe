@@ -1,14 +1,7 @@
 import pandas  # For DataFrame manipulation
 import networkx  # For graph creation and manipulation
 import numpy  # For numerical operations
-from collections import Counter
 from .utils import extract_atac_links
-
-
-def _louvain_to_dict(graph, seed):
-    """Convert louvain_communities result to node->community dict."""
-    communities = networkx.community.louvain_communities(graph, weight='score', seed=seed)
-    return {node: i for i, comm in enumerate(communities) for node in comm}
 
 
 def find_ccan_cutoff(connection_df, tolerance_digits=2, seed=42):
@@ -91,10 +84,17 @@ def number_of_ccans(connections_df, coaccess_cutoff, seed=42):
         return 0
 
     # Apply the Louvain method for community detection
-    partition = _louvain_to_dict(ccan_graph, seed)
+    partition = {}
+    partition = networkx.community.louvain_communities(
+        ccan_graph, weight='score', seed=seed)
+    partition = {node: comp_n
+                 for comp_n in range(len(partition))
+                 for node in partition[comp_n]}
 
     # Count communities with more than two members
-    community_sizes = Counter(partition.values())
+    community_sizes = {k: 0 for k in set(partition.values())}
+    for member in partition.values():
+        community_sizes[member] += 1
 
     return sum(size > 2 for size in community_sizes.values())
 
@@ -159,11 +159,16 @@ def make_ccan_graph(
     nodes = numpy.unique(
         pandas.concat([edges_df[peak1_col], edges_df[peak2_col]]))
 
-    self_edges = pandas.DataFrame({
-        peak1_col: nodes,
-        peak2_col: nodes,
-        score_col: 0
-    })
+    self_edges = pandas.DataFrame(
+        {
+            i: {
+                peak1_col: nodes[i],
+                peak2_col: nodes[i],
+                score_col: 0
+                }
+            for i in range(len(nodes))
+        }
+    ).transpose()
 
     edges_df = pandas.concat([edges_df, self_edges])
     # Create an undirected graph
@@ -254,7 +259,12 @@ def find_ccans(
         score_col=score_col)
 
     # Apply Louvain method for community detection
-    partition = _louvain_to_dict(ccan_graph, seed)
+    partition = {}
+    partition = networkx.community.louvain_communities(
+        ccan_graph, weight='score', seed=seed)
+    partition = {node: comp_n
+                 for comp_n in range(len(partition))
+                 for node in partition[comp_n]}
 
     # Create output DataFrame
     df = pandas.DataFrame({

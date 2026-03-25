@@ -20,18 +20,18 @@ release = '0.3.8'
 import os
 import sys
 
-on_rtd = os.environ.get("READTHEDOCS") == "True"
-if not on_rtd:
-    import sys
-    sys.path.insert(0, os.path.abspath("../.."))
-  
+sys.path.insert(0, os.path.abspath("../../"))
+
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-extensions = ["myst_nb", "sphinx.ext.autodoc", "sphinx.ext.napoleon"]
+
+extensions = ["myst_nb"]
 jupyter_execute_notebooks = "off"
 
 templates_path = ['_templates']
 exclude_patterns = []
+
+
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output

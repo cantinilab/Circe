@@ -65,7 +65,8 @@ def plot_genes(
     if len(genes) == 0:
         raise ValueError(
             "Couldn't find connections with the parameter:" +
-            f"chromosome={chromosome}")
+            "chromosome={}".format(
+                chromosome))
 
     genes = genes[
         ((genes[start_col] >= start)
@@ -77,7 +78,8 @@ def plot_genes(
     if len(genes) == 0:
         raise ValueError(
             "Couldn't find connections with the parameter:" +
-            f"chromosome={chromosome}, start={start}, end={end}")
+            "chromosome={}, start={}, end={}".format(
+                chromosome, start, end))
 
     # Sort genes by start position
     genes = genes.sort_values(by=start_col)
@@ -264,7 +266,8 @@ def plot_connections(
     if len(df) == 0:
         raise ValueError(
             "Couldn't find connections with the parameter:" +
-            f"chromosome={chromosome}")
+            "chromosome={}".format(
+                chromosome))
 
     lower_bound = df[peak1_col].str.split(
         '-', expand=True)[2].astype(int).values
@@ -279,7 +282,8 @@ def plot_connections(
     if len(df) == 0:
         raise ValueError(
             "Couldn't find connections with the parameter:" +
-            f"chromosome={chromosome}, start={start}, end={end}")
+            "chromosome={}, start={}, end={}".format(
+                chromosome, start, end))
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize, facecolor="#FFFFFF")
@@ -580,7 +584,7 @@ def plot_ccan(
     if len(chromosome) != 1:
         raise ValueError("Multiple chromosomes found in ccan module.")
     chromosome = chromosome[0]
-    print(f"This CCAN module is on the chromosome: {chromosome}")
+    print("This CCAN module is on the chromosome: {}".format(chromosome))
 
     # Subset the adata object
     ccan_adata = subset_region(
