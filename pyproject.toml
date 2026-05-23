@@ -34,6 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 downloads = ['pybiomart']
+community = ['leidenalg>=0.9', 'python-igraph>=0.10']
 
 [project.urls]
 Homepage = 'https://github.com/cantinilab/circe'
